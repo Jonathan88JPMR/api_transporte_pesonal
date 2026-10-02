@@ -1,0 +1,27 @@
+@use './variables' as *;
+
+.form-group {
+  margin-bottom: 14px;
+
+  label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: $text-dark;
+  }
+
+  input,
+  textarea,
+  select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: $radius-sm;
+    border: 1px solid $border-color;
+    font-size: 14px;
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+    }
+  }
+}

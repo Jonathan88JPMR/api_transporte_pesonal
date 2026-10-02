@@ -1,0 +1,129 @@
+<!--  Body Wrapper -->
+<div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
+  data-sidebar-position="fixed" data-header-position="fixed">
+  <!-- Sidebar Start -->
+  <aside class="left-sidebar">
+    <!-- Sidebar scroll-->
+    <div>
+      <div class="content-scrollSidebar">
+        <div class="brand-logo d-flex align-items-center justify-content-center">
+          <a class="text-nowrap logo-img text-center">
+            <img src="assets/images/logos/favicon.svg" alt="" />
+          </a>
+          <div (click)="toggleSidebar()" class="close-btn d-xl-none d-block sidebartoggler cursor-pointer"
+            id="sidebarCollapse">
+            <i class="ti ti-x fs-8 text-white"></i>
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div style="max-width: 100%;">
+            <div class="media-title font-weight-semibold">
+              <span class="Hola">Hola</span>
+              <span class="nombre">{{ formatNombre(usuario?.nombre) }}</span>
+              <span class="Hola" style="font-size: 12px;">V {{ version }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Sidebar navigation-->
+      <nav class="sidebar-nav scroll-sidebar scroll-navbar">
+        <ul id="sidebarnav">
+          <ng-container *ngFor="let item of menu; let i = index">
+            <li *ngIf="i === 0 || menu[i - 1].seccion !== item.seccion" class="nav-small-cap">
+              <i class="ti ti-dots nav-small-cap-icon fs-6"></i>
+              <span class="hide-menu"> {{ item.seccion }}</span>
+            </li>
+            <li class="sidebar-item" (click)="toggleSidebar()">
+              <a [routerLink]="item.route" routerLinkActive="active" class="sidebar-link" aria-expanded="false">
+                <span><i class="bx" [ngClass]="item.icon"></i></span>
+                <span class="hide-menu"> {{ item.label }}</span>
+              </a>
+            </li>
+          </ng-container>
+        </ul>
+        <div class="unlimited-access hide-menu position-relative mb-7 text-center">
+          <a *ngIf="isOnline" (click)="logout()" class="btn btn-danger">
+            <span class="d-md-block hide-menu"><i class="icon icon-exit3 mr-2"></i> Cerrar sesión</span>
+          </a>
+          <p *ngIf="!isOnline" class="text-danger">Modo offline..</p>
+        </div>
+      </nav>
+      <!-- End Sidebar navigation -->
+    </div>
+    <!-- End Sidebar scroll-->
+  </aside>
+  <!--  Sidebar End -->
+  <!--  Main wrapper -->
+  <div class="body-wrapper">
+    <!--  Header Start -->
+    <header class="app-header bg-white">
+      <nav class="navbar navbar-expand-lg navbar-light">
+        <ul class="navbar-nav">
+          <li (click)="toggleSidebar()" class="nav-item d-block d-xl-none">
+            <a class="nav-link sidebartoggler nav-icon-hover" id="headerCollapse" href="javascript:void(0)">
+              <i class="ti ti-menu-2"></i>
+            </a>
+          </li>
+        </ul>
+        <div class="navbar-collapse justify-content-end px-0" id="navbarNav">
+          <ul class="navbar-nav align-items-center justify-content-between" style="width: 100%;padding: 0;">
+            <li class="nav-item" style="max-width: 50%;">
+              <span class="currentPath" style="font-size: 15px;color: black;">{{ currentPath }}</span>
+            </li>
+            <div class="info-nav">
+              <li class="nav-item" *ngIf="operacionesPendientes">
+                <span class="badge bg-warning text-dark" title="Operaciones pendientes de sincronizar">
+                  <i class="bx bx-cloud-upload me-1"></i>{{ operacionesPendientes }}
+                </span>
+              </li>
+              <li class="nav-item position-relative">
+                <a class="nav-link nav-icon-hover" href="javascript:void(0)" title="Notificaciones"
+                  (click)="mostrarNotificaciones = !mostrarNotificaciones">
+                  <i class="bx bx-bell"></i>
+                  <div class="notification bg-danger rounded-circle" *ngIf="noLeidas"></div>
+                </a>
+                <div *ngIf="mostrarNotificaciones"
+                  class="notif-dropdown bg-white text-dark shadow rounded p-2">
+                  <div *ngIf="!notificaciones.length" class="text-muted small p-2">Sin notificaciones</div>
+                  <button *ngFor="let n of notificaciones" class="btn text-start w-100 border-bottom rounded-0"
+                    [class.fw-bold]="!n.leida" (click)="leerNotificacion(n)">
+                    <div>{{ n.titulo }}</div>
+                    <small class="text-muted">{{ n.mensaje }} · {{ n.fecha | date:'dd/MM HH:mm' }}</small>
+                  </button>
+                </div>
+              </li>
+              <li class="nav-item">
+                <span class="currentPath" [ngClass]="{'text-danger' : !isOnline}"
+                  style="font-size: 15px;color: black;">{{ !isOnline ? 'Modo Offline...' : (fechaHoy | date:'dd/MM/yyyy') }}
+                  <i [ngClass]="!isOnline ? 'bx-wifi-off' : 'bx-wifi'" class='bx'></i>
+                </span>
+              </li>
+              <li class="nav-item">
+                <span class="nombre2"><i class="icon-pin"></i>{{ usuario?.rol }}</span>
+              </li>
+              <li class="nav-item position-relative">
+                <a class="nav-link nav-icon-hover" href="javascript:void(0)" title="Cambiar clave"
+                  (click)="mostrarClave = !mostrarClave">
+                  <i class="bx bx-key"></i>
+                </a>
+                <div *ngIf="mostrarClave" class="clave-dropdown bg-white text-dark shadow rounded p-3">
+                  <div class="fw-bold mb-2">Cambiar clave</div>
+                  <input type="password" class="form-control form-control-sm mb-2" [(ngModel)]="claveActual"
+                    placeholder="Clave actual" />
+                  <input type="password" class="form-control form-control-sm mb-2" [(ngModel)]="claveNueva"
+                    placeholder="Nueva clave (mín. 6)" />
+                  <input type="password" class="form-control form-control-sm mb-2" [(ngModel)]="claveConfirmar"
+                    placeholder="Confirmar nueva clave" />
+                  <button class="btn btn-primary btn-sm w-100" (click)="cambiarClave()">Guardar</button>
+                </div>
+              </li>
+            </div>
+          </ul>
+        </div>
+      </nav>
+    </header>
+    <div class="container-fluid">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

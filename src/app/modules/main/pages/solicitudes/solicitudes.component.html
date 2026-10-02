@@ -1,0 +1,176 @@
+<div class="page-header d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Solicitudes de movilidad</h5>
+  <button class="btn btn-primary btn-sm" (click)="crear()">
+    <i class="pi pi-plus me-1"></i> Crear
+  </button>
+</div>
+
+<div class="d-flex gap-2 align-items-end mb-2">
+  <div>
+    <label class="form-label mb-0 small">Desde</label>
+    <input type="date" class="form-control form-control-sm" [(ngModel)]="filtroDesde" (change)="cargar()" />
+  </div>
+  <div>
+    <label class="form-label mb-0 small">Hasta</label>
+    <input type="date" class="form-control form-control-sm" [(ngModel)]="filtroHasta" (change)="cargar()" />
+  </div>
+  <button class="btn btn-sm btn-outline-secondary" *ngIf="filtroDesde || filtroHasta" (click)="limpiarFiltro()">Ver todas</button>
+</div>
+
+<p-table [value]="solicitudes" [loading]="cargando" [rowHover]="true"
+         [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
+         [showCurrentPageReport]="true"
+         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+         styleClass="p-datatable-sm p-datatable-striped">
+  <ng-template #header>
+    <tr>
+      <th>PRIORIDAD</th>
+      <th>NOMBRE</th>
+      <th>FECHA / HORA</th>
+      <th>AREA</th>
+      <th>P. PARTIDA</th>
+      <th>P. LLEGADA</th>
+      <th>CANTIDAD</th>
+      <th>MOTIVO</th>
+      <th>PLACA</th>
+      <th>CUPO</th>
+      <th>ESTADO</th>
+      <th>ACCIONES</th>
+    </tr>
+  </ng-template>
+  <ng-template #body let-s>
+    <tr (click)="verDetalle(s)" [class.fila-agrupada]="!!s.idTraslado" [class.table-danger]="s.esEmergencia">
+      <td><p-tag [value]="s.esEmergencia ? 'EMERGENCIA' : 'NORMAL'" [severity]="s.esEmergencia ? 'danger' : 'secondary'"></p-tag></td>
+      <td>{{ s.nombre }}</td>
+      <td>{{ s.fechaProgramada | date:'dd/MM/yyyy' }} {{ s.horaProgramada }}</td>
+      <td>{{ s.area }}</td>
+      <td>{{ s.puntoPartida }}</td>
+      <td>{{ s.puntoLlegada }}</td>
+      <td>{{ s.cantidad }}</td>
+      <td>{{ s.motivo }}</td>
+      <td>{{ s.placa }}</td>
+      <td>
+        <p-tag *ngIf="cupoDe(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>
+      </td>
+      <td><p-tag [value]="s.estado" [severity]="severidadEstado(s.estado)"></p-tag></td>
+      <td>
+        <div class="d-flex gap-1 align-items-center justify-content-center">
+          <button class="btn btn-sm btn-outline-primary" (click)="$event.stopPropagation(); editar(s)" pTooltip="Editar"
+                  tooltipPosition="top" *ngIf="!s.realizado && s.estado !== 'ANULADO'">
+            <i class="pi pi-pencil"></i><span class="accion-label">Editar</span>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" (click)="$event.stopPropagation(); anular(s)" pTooltip="Anular"
+                  tooltipPosition="top" *ngIf="s.estado !== 'ANULADO'">
+            <i class="pi pi-times"></i><span class="accion-label">Anular</span>
+          </button>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+  <ng-template #emptymessage>
+    <tr><td colspan="12" class="text-center text-muted">No hay solicitudes registradas</td></tr>
+  </ng-template>
+</p-table>
+
+<!-- Diálogo crear/editar -->
+<p-dialog [(visible)]="mostrarDialogo" [modal]="true" [style]="{ width: '480px' }"
+          [header]="editando ? 'Editar solicitud' : 'Solicitud Form'" [draggable]="false">
+  <form [formGroup]="form" class="d-flex flex-column gap-3">
+    <div>
+      <label class="form-label">NOMBRE *</label>
+      <input class="form-control" [value]="usuario?.nombre ?? usuario?.usuario" disabled />
+    </div>
+    <div>
+      <label class="form-label">FECHA PROGRAMADA *</label>
+      <input type="date" class="form-control" formControlName="fechaProgramada" />
+    </div>
+    <div>
+      <label class="form-label">Hr. PROGRAMADA *</label>
+      <input type="time" class="form-control" formControlName="horaProgramada" />
+    </div>
+    <div>
+      <label class="form-label">P. PARTIDA *</label>
+      <p-select [options]="puntos" optionLabel="nombre" optionValue="nombre"
+                formControlName="puntoPartida" placeholder="Seleccione" styleClass="w-100"></p-select>
+    </div>
+    <div>
+      <label class="form-label">P. LLEGADA *</label>
+      <p-select [options]="puntos" optionLabel="nombre" optionValue="nombre"
+                formControlName="puntoLlegada" placeholder="Seleccione" styleClass="w-100"></p-select>
+    </div>
+    <div>
+      <label class="form-label">CANTIDAD *</label>
+      <p-inputnumber formControlName="cantidad" [showButtons]="true" [min]="1" styleClass="w-100"></p-inputnumber>
+    </div>
+    <div>
+      <label class="form-label">MOTIVO *</label>
+      <p-select [options]="motivos" optionLabel="nombre" optionValue="nombre"
+                formControlName="motivo" placeholder="Seleccione" styleClass="w-100"></p-select>
+    </div>
+    <div>
+      <label class="form-label">OBSERVACIÓN</label>
+      <textarea class="form-control" rows="2" formControlName="observacion"></textarea>
+    </div>
+    <div class="form-check">
+      <input id="esEmergencia" type="checkbox" class="form-check-input" formControlName="esEmergencia" />
+      <label class="form-check-label text-danger fw-semibold" for="esEmergencia">Emergencia médica</label>
+    </div>
+  </form>
+  <ng-template #footer>
+    <button class="btn btn-outline-secondary" (click)="mostrarDialogo = false">Cancel</button>
+    <button class="btn btn-primary" (click)="guardar()" [disabled]="form.invalid">Save</button>
+  </ng-template>
+</p-dialog>
+
+<!-- Detalle -->
+<p-dialog [(visible)]="mostrarDetalle" [modal]="true" [style]="{ width: '420px' }"
+          [header]="detalle?.nombre ?? 'Detalle'" [draggable]="false">
+  <ng-container *ngIf="detalle">
+    <dl class="detalle-lista">
+      <dt>PRIORIDAD</dt><dd>{{ detalle.esEmergencia ? 'EMERGENCIA MÉDICA' : 'NORMAL' }}</dd>
+      <dt>NOMBRE</dt><dd>{{ detalle.nombre }}</dd>
+      <dt>FECHA PROGRAMADA</dt><dd>{{ detalle.fechaProgramada | date:'dd/MM/yyyy' }}</dd>
+      <dt>Hr. PROGRAMADA</dt><dd>{{ detalle.horaProgramada }}</dd>
+      <dt>AREA</dt><dd>{{ detalle.area }}</dd>
+      <dt>P. PARTIDA</dt><dd>{{ detalle.puntoPartida }}</dd>
+      <dt>P. LLEGADA</dt><dd>{{ detalle.puntoLlegada }}</dd>
+      <dt>CANTIDAD</dt><dd>{{ detalle.cantidad }}</dd>
+      <dt>MOTIVO</dt><dd>{{ detalle.motivo }}</dd>
+      <dt>OBSERVACIÓN</dt><dd>{{ detalle.observacion || '-' }}</dd>
+      <dt>PLACA</dt><dd>{{ detalle.placa }}</dd>
+      <dt>ESTADO</dt><dd>{{ detalle.estado }}</dd>
+      <dt>REALIZADO</dt><dd>{{ detalle.realizado ? 'SI' : 'NO' }}</dd>
+      <ng-container *ngIf="trasladoDe(detalle) as t">
+        <dt>TRASLADO</dt><dd>T-{{ t.idTraslado }} · {{ t.placa }}</dd>
+        <dt *ngIf="t.ruta">RUTA</dt><dd *ngIf="t.ruta">{{ t.ruta }}</dd>
+      </ng-container>
+    </dl>
+    <div *ngIf="trasladoDe(detalle)?.paradas?.length" class="mt-2">
+      <h6>Paradas del traslado</h6>
+      <p-table [value]="trasladoDe(detalle)?.paradas ?? []"
+               [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"
+               styleClass="p-datatable-sm p-datatable-striped">
+        <ng-template #header>
+          <tr><th>#</th><th>Punto</th><th>Suben</th><th>Bajan</th></tr>
+        </ng-template>
+        <ng-template #body let-p let-i="rowIndex">
+          <tr><td>{{ p.orden ?? i + 1 }}</td><td>{{ p.punto }}</td><td>{{ p.cantidadSube }}</td><td>{{ p.cantidadBaja }}</td></tr>
+        </ng-template>
+      </p-table>
+    </div>
+    <div *ngIf="(trasladoDe(detalle)?.solicitudes?.length ?? 0) > 1" class="mt-2">
+      <h6>Solicitudes del traslado</h6>
+      <ul class="small mb-0 ps-3">
+        <li *ngFor="let s of trasladoDe(detalle)?.solicitudes">
+          {{ s.nombre }} — {{ s.puntoPartida }} → {{ s.puntoLlegada }} ({{ s.cantidad }} pers.)
+        </li>
+      </ul>
+    </div>
+    <div *ngIf="detalle.estado === 'PENDIENTE' && traslados.length" class="mt-3">
+      <h6>Acoplar a traslado con cupo</h6>
+      <button *ngFor="let t of traslados" class="btn btn-sm btn-outline-primary me-2 mb-2" (click)="acoplar(t)">
+        T-{{ t.idTraslado }} · {{ t.placa }} · {{ t.ruta }}
+      </button>
+    </div>
+  </ng-container>
+</p-dialog>

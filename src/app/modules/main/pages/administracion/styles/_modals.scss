@@ -1,0 +1,149 @@
+.admin-modal {
+  .modal-content {
+    border-radius: 12px;
+    padding: 20px;
+  }
+}
+
+// .modal-backdrop {
+//   position: fixed;
+//   inset: 0;
+//   background: rgba(0, 0, 0, 0.45);
+//   display: flex;
+//   align-items: center;
+//   justify-content: center;
+//   z-index: 1050; // IMPORTANTE
+//   overflow: auto;
+// }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  overflow: auto;
+}
+
+.modal {
+  position: relative;
+  background-color: #ffffff;
+  border-radius: 12px;
+  width: 400px;
+  max-width: 90%;
+  padding: 20px 30px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s ease-in-out;
+
+  &.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  h3 {
+    margin: 0 0 14px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  label {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  input,
+  textarea,
+  select {
+    width: 100%;
+    padding: 8px 10px;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: #3f51b5;
+    }
+  }
+}
+
+// .modal {
+//   background: #ffffff;
+//   border-radius: 10px;
+//   width: 100%;
+//   max-width: 520px;
+//   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+//   animation: modalFade 0.2s ease-out;
+//   z-index: 1060; // MÁS ALTO QUE EL BACKDROP
+//   border: 3px solid red;
+// }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* HEADER */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+  }
+}
+
+/* BODY */
+.modal-body {
+  padding: 18px;
+}
+
+/* FOOTER */
+.modal-footer {
+  padding: 14px 18px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ANIMACIÓN */
+@keyframes modalFade {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

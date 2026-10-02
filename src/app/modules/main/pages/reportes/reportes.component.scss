@@ -1,0 +1,23 @@
+.page-header h5 {
+  font-weight: 600;
+}
+
+@media (max-width: 576px) {
+  .card-body.d-flex {
+    > div {
+      flex: 1 1 45%;
+      min-width: 140px;
+    }
+
+    > .btn {
+      flex: 1 1 auto;
+    }
+
+    > .ms-auto {
+      flex: 1 1 100%;
+      margin-left: 0 !important;
+      flex-wrap: wrap;
+      gap: 12px !important;
+    }
+  }
+}

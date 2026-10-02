@@ -1,0 +1,168 @@
+<div class="page-header mb-3">
+  <h5 class="mb-0">Reporte de solicitudes</h5>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body d-flex gap-3 align-items-end flex-wrap">
+    <div>
+      <label class="form-label">Desde</label>
+      <input type="date" class="form-control" [(ngModel)]="desde" />
+    </div>
+    <div>
+      <label class="form-label">Hasta</label>
+      <input type="date" class="form-control" [(ngModel)]="hasta" />
+    </div>
+    <button class="btn btn-primary" (click)="cargar()">
+      <i class="pi pi-search me-1"></i> Generar
+    </button>
+    <button class="btn btn-outline-success" (click)="exportarCsv()" [disabled]="!registrosFiltrados.length">
+      <i class="pi pi-download me-1"></i> Exportar CSV
+    </button>
+    <button class="btn btn-outline-danger" (click)="imprimirPdf()" [disabled]="!registros.length"><i class="pi pi-file-pdf me-1"></i>Imprimir / PDF</button>
+    <div class="ms-auto d-flex gap-4" *ngIf="registros.length">
+      <div><strong>{{ registrosFiltrados.length }}</strong> solicitudes</div>
+      <div><strong>{{ totalPersonas }}</strong> personas</div>
+      <div><strong>{{ totalRealizados }}</strong> realizadas</div>
+    </div>
+  </div>
+  <div class="card-body d-flex gap-3 align-items-end border-top pt-2 flex-wrap" *ngIf="registros.length">
+    <div>
+      <label class="form-label">Supervisor</label>
+      <select class="form-select" [(ngModel)]="filtroSupervisor">
+        <option value="">Todos</option>
+        <option *ngFor="let s of supervisores" [value]="s">{{ s }}</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Placa</label>
+      <select class="form-select" [(ngModel)]="filtroPlaca">
+        <option value="">Todas</option>
+        <option *ngFor="let p of placas" [value]="p">{{ p }}</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Estado</label>
+      <select class="form-select" [(ngModel)]="filtroEstado">
+        <option value="">Todos</option>
+        <option *ngFor="let e of estados" [value]="e">{{ e }}</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3" *ngIf="indicadores">
+  <div class="col-md-3"><div class="card card-body"><small>Solicitudes</small><h4>{{ indicadores.totalSolicitudes }}</h4></div></div>
+  <div class="col-md-3"><div class="card card-body"><small>Personas</small><h4>{{ indicadores.totalPersonas }}</h4></div></div>
+  <div class="col-md-3"><div class="card card-body"><small>Realizados</small><h4>{{ indicadores.totalRealizados }}</h4></div></div>
+  <div class="col-md-3"><div class="card card-body text-danger"><small>Emergencias</small><h4>{{ indicadores.totalEmergencias }}</h4></div></div>
+</div>
+<div class="row g-3 mb-3" *ngIf="indicadores">
+  <div class="col-md-4"><div class="card card-body"><small>Duración promedio</small><h5>{{ indicadores.tiempoPromedioMinutos | number:'1.0-1' }} min</h5></div></div>
+  <div class="col-md-4"><div class="card card-body"><small>Espera promedio</small><h5>{{ indicadores.esperaPromedioMinutos | number:'1.0-1' }} min</h5></div></div>
+  <div class="col-md-4"><div class="card card-body"><small>Puntualidad ±10 min</small><h5>{{ indicadores.puntualidadPorcentaje | number:'1.0-1' }}%</h5></div></div>
+</div>
+<div class="card mb-3" *ngIf="indicadores?.unidades?.length"><div class="card-body"><h6>Eficiencia por unidad</h6>
+  <p-table [value]="unidades" [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"
+           [rowHover]="true" styleClass="p-datatable-sm p-datatable-striped">
+    <ng-template #header>
+      <tr><th>Placa</th><th>Viajes</th><th>Personas</th><th>Ocupación</th></tr>
+    </ng-template>
+    <ng-template #body let-u>
+      <tr><td>{{ u.placa }}</td><td>{{ u.viajes }}</td><td>{{ u.personas }}</td><td>{{ u.ocupacionPorcentaje }}%</td></tr>
+    </ng-template>
+  </p-table>
+</div></div>
+<div class="card mb-3" *ngIf="indicadores?.conductores?.length"><div class="card-body"><h6>Servicios por conductor</h6>
+  <p-table [value]="conductores" [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"
+           [rowHover]="true" styleClass="p-datatable-sm p-datatable-striped">
+    <ng-template #header>
+      <tr><th>Conductor</th><th>Placa</th><th>Servicios</th><th>Personas</th></tr>
+    </ng-template>
+    <ng-template #body let-c>
+      <tr><td>{{ c.conductor }}</td><td>{{ c.placa }}</td><td>{{ c.servicios }}</td><td>{{ c.personas }}</td></tr>
+    </ng-template>
+  </p-table>
+</div></div>
+<div class="card mb-3" *ngIf="indicadores?.areas?.length"><div class="card-body"><h6>Movimiento por área</h6>
+  <p-table [value]="areas" [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"
+           [rowHover]="true" styleClass="p-datatable-sm p-datatable-striped">
+    <ng-template #header>
+      <tr><th>Área</th><th>Solicitudes</th><th>Personas</th></tr>
+    </ng-template>
+    <ng-template #body let-a>
+      <tr><td>{{ a.area || '(sin área)' }}</td><td>{{ a.solicitudes }}</td><td>{{ a.personas }}</td></tr>
+    </ng-template>
+  </p-table>
+</div></div>
+
+<p-table [value]="registrosFiltrados" [loading]="cargando" [rowHover]="true"
+         [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
+         [showCurrentPageReport]="true"
+         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+         styleClass="p-datatable-sm p-datatable-striped">
+  <ng-template #header>
+    <tr>
+      <th>FECHA</th>
+      <th>NOMBRE</th>
+      <th>REGISTRA</th>
+      <th>AREA</th>
+      <th>Hr.</th>
+      <th>P. PARTIDA</th>
+      <th>P. LLEGADA</th>
+      <th>CANT.</th>
+      <th>MOTIVO</th>
+      <th>PRIORIDAD</th>
+      <th>PLACA</th>
+      <th>REALIZADO</th>
+    </tr>
+  </ng-template>
+  <ng-template #body let-s>
+    <tr>
+      <td>{{ s.fechaProgramada | date:'dd/MM/yyyy' }}</td>
+      <td>{{ s.nombre }}</td>
+      <td>{{ s.usuarioRegistra }}</td>
+      <td>{{ s.area }}</td>
+      <td>{{ s.horaProgramada }}</td>
+      <td>{{ s.puntoPartida }}</td>
+      <td>{{ s.puntoLlegada }}</td>
+      <td>{{ s.cantidad }}</td>
+      <td>{{ s.motivo }}</td>
+      <td><p-tag [value]="s.esEmergencia ? 'EMERGENCIA' : 'NORMAL'" [severity]="s.esEmergencia ? 'danger' : 'secondary'"></p-tag></td>
+      <td>{{ s.placa }}</td>
+      <td>
+        <p-tag [value]="s.realizado ? 'SI' : 'NO'" [severity]="s.realizado ? 'success' : 'danger'"></p-tag>
+      </td>
+    </tr>
+  </ng-template>
+  <ng-template #emptymessage>
+    <tr><td colspan="12" class="text-center text-muted">Sin resultados</td></tr>
+  </ng-template>
+</p-table>
+
+<div class="mt-3">
+  <button class="btn btn-outline-secondary" (click)="cargarAuditoria()">Cargar auditoría</button>
+  <p-table *ngIf="auditoria.length" [value]="auditoria" [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"
+           [rowHover]="true" [showCurrentPageReport]="true"
+           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+           styleClass="p-datatable-sm p-datatable-striped" class="mt-2">
+    <ng-template #header>
+      <tr>
+        <th>Fecha</th>
+        <th>Entidad</th>
+        <th>Acción</th>
+        <th>Usuario</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-a>
+      <tr>
+        <td>{{ a.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+        <td>{{ a.entidad }} #{{ a.idEntidad }}</td>
+        <td>{{ a.accion }}</td>
+        <td>{{ a.usuario }}</td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr><td colspan="4" class="text-center text-muted">Sin resultados</td></tr>
+    </ng-template>
+  </p-table>
+</div>

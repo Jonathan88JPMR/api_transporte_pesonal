@@ -1,0 +1,359 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* =========================
+   IMPORTS GLOBALES (SIEMPRE ARRIBA)
+   ========================= */
+
+@use './app/modules/main/pages/administracion/styles/admin.scss';
+@use './styles/custom-tabs.scss';
+
+@import 'primeicons/primeicons.css';
+@import 'leaflet/dist/leaflet.css';
+
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+:root {
+    --tamaño-letra: 14px;
+
+    /* Tipografía configurable desde Administración */
+    --typo-font-family:   inherit;
+    --typo-font-size:     14px;
+    --typo-color:         #212529;
+    --typo-tablas-size:   13px;
+    --typo-tablas-color:  #212529;
+    --typo-inputs-size:   14px;
+    --typo-inputs-color:  #495057;
+    --typo-forms-size:    14px;
+    --typo-forms-color:   #212529;
+    --typo-cards-size:    14px;
+    --typo-cards-color:   #212529;
+    --typo-btns-size:     13px;
+    --typo-btns-color:    #ffffff;
+    --typo-badges-size:   11px;
+    --typo-badges-color:  #ffffff;
+    --typo-labels-size:   13px;
+    --typo-labels-color:  #6c757d;
+    --typo-modales-size:  14px;
+    --typo-modales-color: #212529;
+}
+
+* {
+    transition: background-color .3s ease-in-out;
+    interpolate-size: allow-keywords;
+}
+
+/* Tipografía global */
+body {
+    font-family: var(--typo-font-family);
+    font-size: var(--typo-font-size);
+    color: var(--typo-color);
+}
+
+*:not(i):not(.sidebar-item span), * .btn {
+    font-size: var(--typo-font-size);
+    color: inherit;
+}
+
+/* Tipografía por componente */
+table, table td, table th {
+    font-size: var(--typo-tablas-size) !important;
+    color: var(--typo-tablas-color) !important;
+}
+
+input.form-control, select.form-select, textarea.form-control {
+    font-size: var(--typo-inputs-size) !important;
+    color: var(--typo-inputs-color) !important;
+}
+
+.form-group label, .form-label, label {
+    font-size: var(--typo-labels-size) !important;
+    color: var(--typo-labels-color) !important;
+}
+
+.card, .card-body, .card * {
+    font-size: var(--typo-cards-size);
+    color: var(--typo-cards-color);
+}
+
+.btn {
+    font-size: var(--typo-btns-size) !important;
+}
+
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active,
+.btn-primary:disabled,
+.btn-primary[disabled],
+.btn-danger,
+.btn-danger:hover,
+.btn-danger:focus,
+.btn-danger:active,
+.btn-danger.active,
+.btn-danger:disabled,
+.btn-danger[disabled],
+.btn-success,
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:active,
+.btn-success.active,
+.btn-success:disabled,
+.btn-success[disabled] {
+    color: #ffffff !important;
+}
+
+.badge {
+    font-size: var(--typo-badges-size) !important;
+}
+
+.modal-body, .modal-body * {
+    font-size: var(--typo-modales-size);
+    color: var(--typo-modales-color);
+}
+
+/* formularios (contenedores .form-group y .modal) */
+.form-group, .modal-content {
+    font-size: var(--typo-forms-size);
+    color: var(--typo-forms-color);
+}
+
+textarea {
+    resize: none;
+    field-sizing: content;
+}
+
+table * {
+    text-align: center;
+    vertical-align: middle;
+}
+
+table tr button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Etiqueta de acción: oculta en desktop (se usa pTooltip), visible en móvil */
+.btn .accion-label {
+    display: none;
+}
+
+@media (max-width: 576px) {
+    table tr button {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .btn .accion-label {
+        display: block;
+        font-size: 10px;
+        line-height: 1;
+    }
+}
+
+.card {
+    padding: 15px;
+}
+
+.card-body {
+    padding: 15px !important;
+}
+
+.box-labelFloat {
+    position: relative;
+    justify-content: center;
+    padding: 0 15px;
+}
+
+.box-labelFloat > label {
+    position: absolute;
+    padding: 0 10px;
+    width: max-content;
+    z-index: 9;
+    top: 0;
+    left: 30px;
+    background-color: #fff;
+}
+
+.box-labelFloat > div {
+    padding: 10px 0;
+    width: 100%;
+}
+
+.box-labelFloat > div > select, .box-labelFloat > div > input {
+    height: 44.8px;
+}
+
+.form-control {
+    align-content: center;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --tamaño-letra: 13px;
+    }
+}
+
+@media (max-width: 500px) {
+    .box-labelFloat > div > select, .box-labelFloat > div > input {
+        background-image: none;
+        padding-right: 15px !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .box-labelFloat > label {
+        left: 20px;
+    }
+    :root {
+        --tamaño-letra: 13px;
+    }
+}
+
+.modal-open {
+    overflow: hidden;
+}
+
+/* ============================================
+   SISTEMA DE COLORES SEMÁNTICOS - ESTÁNDAR HASS
+   ============================================ */
+
+/*
+ * REGLA DE ORO: Usar clases semánticas, NO colores directos
+ *
+ * ✅ CORRECTO: class="estado-aprobado"
+ * ❌ INCORRECTO: class="bg-success" o style="color: green"
+ */
+
+/* Estados de Aprobación */
+.estado-aprobado {
+    background-color: var(--app-success, #85d446) !important;
+    color: white !important;
+}
+
+.estado-pendiente {
+    background-color: var(--app-warning, #f2d15a) !important;
+    color: #333 !important;
+}
+
+.estado-rechazado {
+    background-color: var(--app-danger, #f25a5a) !important;
+    color: white !important;
+}
+
+.estado-anulado {
+    background-color: #707a82 !important;
+    color: white !important;
+}
+
+/* Acciones */
+.accion-primaria {
+    background-color: var(--app-primary, #2952ff) !important;
+    color: white !important;
+}
+
+.accion-secundaria {
+    background-color: var(--app-secondary, #74dbf7) !important;
+    color: #333 !important;
+}
+
+.accion-peligro {
+    background-color: var(--app-danger, #f25a5a) !important;
+    color: white !important;
+}
+
+/* Datos/Estadísticas */
+.dato-principal {
+    background-color: var(--app-primary, #2952ff) !important;
+    color: white !important;
+}
+
+.dato-secundario {
+    background-color: var(--app-info, #745af2) !important;
+    color: white !important;
+}
+
+.dato-alerta {
+    background-color: var(--app-warning, #f2d15a) !important;
+    color: #333 !important;
+}
+
+/* Badges Semánticos */
+.badge-aprobado {
+    background-color: var(--app-success, #85d446);
+    color: white;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.875em;
+    font-weight: 500;
+}
+
+.badge-pendiente {
+    background-color: var(--app-warning, #f2d15a);
+    color: #333;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.875em;
+    font-weight: 500;
+}
+
+.badge-rechazado {
+    background-color: var(--app-danger, #f25a5a);
+    color: white;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.875em;
+    font-weight: 500;
+}
+
+.badge-anulado {
+    background-color: #707a82;
+    color: white;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.875em;
+    font-weight: 500;
+}
+
+/* Bordes Semánticos */
+.border-aprobado {
+    border-left: 4px solid var(--app-success, #85d446) !important;
+}
+
+.border-pendiente {
+    border-left: 4px solid var(--app-warning, #f2d15a) !important;
+}
+
+.border-rechazado {
+    border-left: 4px solid var(--app-danger, #f25a5a) !important;
+}
+
+.border-anulado {
+    border-left: 4px solid #707a82 !important;
+}
+
+/* Tooltip PrimeNG: la regla global *:not(i) pisa el color del texto */
+.p-tooltip .p-tooltip-text {
+    color: #ffffff !important;
+}
+
+/* SweetAlert2 High Z-Index para aparecer sobre modales */
+.swal-high-zindex {
+  z-index: 100000 !important;
+}
+
+.swal-high-zindex .swal2-popup {
+  z-index: 100001 !important;
+}
+
+body.swal2-shown > .swal2-container.swal-high-zindex {
+  z-index: 100000 !important;
+}

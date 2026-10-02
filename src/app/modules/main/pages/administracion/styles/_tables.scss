@@ -1,0 +1,66 @@
+.admin-table {
+  width: 100%;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,.04);
+
+  th {
+    background: #eef2ff;
+    font-weight: 600;
+  }
+
+  td, th {
+    padding: 12px;
+  }
+}
+
+/* En móvil cada fila se vuelve una tarjeta con etiquetas */
+@media (max-width: 576px) {
+  .table-mobile-cards {
+    display: block;
+
+    table {
+      display: block;
+    }
+
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: block;
+    }
+
+    tr {
+      display: block;
+      margin-bottom: 12px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .05);
+      overflow: hidden;
+    }
+
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      text-align: right;
+      border-bottom: 1px solid #f1f3f5;
+
+      &::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6b7280;
+        text-align: left;
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+  }
+}

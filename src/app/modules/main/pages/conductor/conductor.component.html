@@ -1,0 +1,111 @@
+<div class="page-header d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-0">Mis servicios</h5>
+    <small class="text-muted" *ngIf="usuario?.placa">Unidad: {{ usuario!.placa }}</small>
+  </div>
+  <button class="btn btn-outline-primary btn-sm" (click)="cargar()">
+    <i class="pi pi-refresh me-1"></i> Actualizar
+  </button>
+</div>
+
+<div class="alert alert-info py-2" *ngIf="rutaDelDia">
+  <i class="pi pi-map-marker me-1"></i>
+  <strong>Ruta:</strong> {{ rutaDelDia }}
+</div>
+
+<p-table [value]="servicios" [loading]="cargando" [rowHover]="true"
+         [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
+         [showCurrentPageReport]="true"
+         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+         styleClass="p-datatable-sm p-datatable-striped">
+  <ng-template #header>
+    <tr>
+      <th>Hr. PROGRAMADA</th>
+      <th>SOLICITA</th>
+      <th>P. PARTIDA</th>
+      <th>P. LLEGADA</th>
+      <th>CANTIDAD</th>
+      <th>CUPO</th>
+      <th>MOTIVO</th>
+      <th>PRIORIDAD</th>
+      <th>ESTADO</th>
+      <th>ACCIONES</th>
+    </tr>
+  </ng-template>
+  <ng-template #body let-s>
+    <tr [class.table-success]="s.realizado" [class.table-danger]="s.esEmergencia">
+      <td>{{ s.fechaProgramada | date:'dd/MM' }} {{ s.horaProgramada }}</td>
+      <td>{{ s.nombre }}</td>
+      <td>{{ s.puntoPartida }}</td>
+      <td>{{ s.puntoLlegada }}</td>
+      <td>{{ s.cantidad }}</td>
+      <td>
+        <p-tag *ngIf="cupoServicio(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>
+      </td>
+      <td>{{ s.motivo }}</td>
+      <td><p-tag [value]="s.esEmergencia ? 'EMERGENCIA' : 'NORMAL'" [severity]="s.esEmergencia ? 'danger' : 'secondary'"></p-tag></td>
+      <td><p-tag [value]="s.estado" [severity]="s.estado === 'REALIZADO' ? 'success' : s.estado === 'EN_RUTA' ? 'info' : 'warn'"></p-tag></td>
+      <td>
+        <div class="d-flex gap-1 align-items-center justify-content-center">
+          <button *ngIf="s.estado === 'ASIGNADO'" class="btn btn-sm btn-primary" (click)="cambiarEstado(s, 'EN_RUTA')"
+                  pTooltip="Iniciar servicio" tooltipPosition="top">
+            <i class="pi pi-play"></i><span class="accion-label">Iniciar</span>
+          </button>
+          <button *ngIf="s.estado === 'EN_RUTA'" class="btn btn-sm btn-success" (click)="cambiarEstado(s, 'REALIZADO')"
+                  pTooltip="Finalizar servicio" tooltipPosition="top">
+            <i class="pi pi-check"></i><span class="accion-label">Finalizar</span>
+          </button>
+          <button *ngIf="s.estado === 'ASIGNADO' || s.estado === 'EN_RUTA'" class="btn btn-sm btn-outline-danger" (click)="abrirPasajeros(s)" pTooltip="Agregar pasajeros de emergencia" tooltipPosition="top"><i class="pi pi-user-plus"></i><span class="accion-label">Pasajeros</span></button>
+          <button *ngIf="mapaUrl(s) || s.paradas?.length" class="btn btn-sm btn-outline-info" (click)="verMapa(s)" pTooltip="Ver mapa y paradas" tooltipPosition="top"><i class="pi pi-map"></i><span class="accion-label">Mapa</span></button>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+  <ng-template #emptymessage>
+    <tr><td colspan="9" class="text-center text-muted">No tiene servicios asignados</td></tr>
+  </ng-template>
+</p-table>
+
+<!-- RF-024: registrar pasajeros adicionales de emergencia -->
+<div class="card mt-3" *ngIf="servicioPasajeros">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">Agregar pasajeros de emergencia — Solicitud #{{ servicioPasajeros.idSolicitud }}</h6>
+      <button class="btn-close" (click)="servicioPasajeros = undefined"></button>
+    </div>
+    <div class="d-flex gap-3 align-items-end">
+      <div>
+        <label class="form-label small mb-0">Pasajeros adicionales</label>
+        <input type="number" min="1" class="form-control" style="width:120px" [(ngModel)]="pasajerosExtra" />
+      </div>
+      <div class="small text-muted" *ngIf="cupoServicio(servicioPasajeros) as c">Cupo libre: {{ c.libre }} de {{ c.capacidad }}</div>
+      <button class="btn btn-danger" (click)="guardarPasajeros()" [disabled]="pasajerosExtra < 1">
+        <i class="pi pi-user-plus me-1"></i> Agregar
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3" *ngIf="servicioMapa">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">Ruta: {{ servicioMapa.ruta || (servicioMapa.puntoPartida + ' → ' + servicioMapa.puntoLlegada) }}</h6>
+      <div class="d-flex gap-2 align-items-center">
+        <a *ngIf="mapaUrl(servicioMapa) as url" class="btn btn-sm btn-outline-info" [href]="url" target="_blank" rel="noopener"><i class="pi pi-external-link me-1"></i>Abrir en OSM</a>
+        <button class="btn-close" (click)="servicioMapa = undefined; puntosMapaSel = []"></button>
+      </div>
+    </div>
+    <!-- RF-023: paradas ordenadas con cantidades por punto -->
+    <p-table *ngIf="servicioMapa.paradas?.length" [value]="paradasMapa"
+             [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"
+             [rowHover]="true" styleClass="p-datatable-sm p-datatable-striped mb-3">
+      <ng-template #header>
+        <tr><th style="width:40px">#</th><th>Punto</th><th>Suben</th><th>Bajan</th></tr>
+      </ng-template>
+      <ng-template #body let-p let-i="rowIndex">
+        <tr><td>{{ p.orden ?? i + 1 }}</td><td>{{ p.punto }}</td><td>{{ p.cantidadSube }}</td><td>{{ p.cantidadBaja }}</td></tr>
+      </ng-template>
+    </p-table>
+    <app-mapa [puntos]="puntosMapaSel" [origen]="origenMapa"></app-mapa>
+  </div>
+</div>

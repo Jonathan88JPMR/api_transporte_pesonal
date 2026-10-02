@@ -1,0 +1,24 @@
+.page-header h5 {
+  font-weight: 600;
+}
+
+tr.fila-agrupada {
+  background-color: #e8f5ef;
+}
+
+.detalle-lista {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 0;
+
+  dt {
+    color: #888;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  dd { margin: 0; }
+}
+

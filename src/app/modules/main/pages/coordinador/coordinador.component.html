@@ -1,0 +1,195 @@
+<div class="page-header mb-3">
+  <h5 class="mb-0">Coordinación de movilidades</h5>
+  <small class="text-muted">Asigne unidades, una solicitudes en un solo traslado o sepárelas</small>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Solicitudes</h6>
+          <div class="d-flex gap-2 align-items-center" *ngIf="seleccionadas.length > 0">
+            <p-select [options]="unidadesOpciones" optionLabel="etiqueta" optionValue="placa" optionDisabled="sinCupo"
+                      [(ngModel)]="placaUnir" placeholder="Placa del traslado" appendTo="body" styleClass="p-select-sm"></p-select>
+            <button class="btn btn-primary btn-sm" (click)="unir()" [disabled]="seleccionadas.length < 2">
+              <i class="pi pi-link me-1"></i> Unir ({{ seleccionadas.length }})
+            </button>
+          </div>
+        </div>
+
+        <!-- RF-012: disponibilidad de unidades con colores (verde libre / ámbar parcial / rojo llena) -->
+        <div class="d-flex flex-wrap gap-2 mb-2" *ngIf="unidades.length">
+          <span *ngFor="let u of unidades" class="badge" [ngClass]="claseUnidad(u)">
+            {{ u.placa }} · {{ cupoUnidad(u) }}/{{ u.capacidad }} libres
+          </span>
+        </div>
+
+        <p-table [value]="solicitudes" [loading]="cargando" [rowHover]="true"
+                 [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
+                 [showCurrentPageReport]="true"
+                 currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+                 styleClass="p-datatable-sm p-datatable-striped">
+          <ng-template #header>
+            <tr>
+              <th style="width: 40px"></th>
+              <th>NOMBRE</th>
+              <th>Hr.</th>
+              <th>P. PARTIDA</th>
+              <th>P. LLEGADA</th>
+              <th>CANT.</th>
+              <th>MOTIVO</th>
+              <th>PLACA</th>
+              <th>TRASLADO</th>
+              <th>ACCIONES</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-s>
+            <tr [class.fila-agrupada]="!!s.idTraslado">
+              <td>
+                <p-checkbox *ngIf="esSeleccionable(s)" name="sel" [value]="s"
+                            [(ngModel)]="seleccionadas" [binary]="false"></p-checkbox>
+              </td>
+              <td>{{ s.nombre }}</td>
+              <td>{{ s.horaProgramada }}</td>
+              <td>{{ s.puntoPartida }}</td>
+              <td>{{ s.puntoLlegada }}</td>
+              <td>{{ s.cantidad }}</td>
+              <td>{{ s.motivo }}</td>
+              <td>{{ s.placa }}</td>
+              <td>
+                <p-tag *ngIf="s.idTraslado" [value]="'T-' + s.idTraslado" severity="info"></p-tag>
+              </td>
+              <td>
+                <div class="d-flex gap-1 align-items-center" *ngIf="!s.idTraslado && s.estado !== 'ANULADO'">
+                  <p-select [options]="unidadesOpciones" optionLabel="etiqueta" optionValue="placa" optionDisabled="sinCupo"
+                            [(ngModel)]="placasAsignar[s.idSolicitud]" placeholder="Placa"
+                            appendTo="body" styleClass="p-select-sm" [style]="{ width: '170px' }"></p-select>
+                  <button class="btn btn-sm btn-outline-primary" (click)="asignar(s)" pTooltip="Asignar unidad" tooltipPosition="top">
+                    <i class="pi pi-check"></i><span class="accion-label">Asignar</span>
+                  </button>
+                  <button class="btn btn-sm btn-outline-success" (click)="asignarAutomatico(s)" pTooltip="Asignación automática (primera unidad con cupo)" tooltipPosition="top">
+                    <i class="pi pi-bolt"></i><span class="accion-label">Auto</span>
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" (click)="abrirAsignacionMultiple(s)" pTooltip="Asignar varias unidades" tooltipPosition="top">
+                    <i class="pi pi-clone"></i><span class="accion-label">Varias</span>
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" (click)="editarSolicitud(s)" pTooltip="Editar solicitud" tooltipPosition="top"
+                          *ngIf="!s.realizado">
+                    <i class="pi pi-pencil"></i><span class="accion-label">Editar</span>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" (click)="anularSolicitud(s)" pTooltip="Anular solicitud" tooltipPosition="top">
+                    <i class="pi pi-times"></i><span class="accion-label">Anular</span>
+                  </button>
+                </div>
+                <button *ngIf="s.idTraslado" class="btn btn-sm btn-outline-danger" (click)="separar(s)"
+                        pTooltip="Separar del traslado" tooltipPosition="top">
+                  <i class="pi pi-unlink"></i><span class="accion-label">Separar</span>
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr><td colspan="10" class="text-center text-muted">No hay solicitudes</td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h6>Traslados activos</h6>
+        <div *ngIf="traslados.length === 0" class="text-muted small">No hay traslados</div>
+        <div *ngFor="let t of traslados" class="traslado-card mb-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <strong>T-{{ t.idTraslado }} · {{ t.placa }}</strong>
+            <div class="d-flex gap-1">
+              <!-- RF-020: ocupación del traslado con color -->
+              <p-tag [value]="ocupacionTraslado(t) + '/' + capacidadDe(t.placa)" [severity]="severidadCupo(ocupacionTraslado(t), capacidadDe(t.placa))"></p-tag>
+              <p-tag [value]="t.estado" [severity]="t.estado === 'PENDIENTE' ? 'warn' : 'success'"></p-tag>
+            </div>
+          </div>
+          <div class="ruta small mt-1" *ngIf="t.ruta">
+            <i class="pi pi-map-marker me-1"></i>{{ t.ruta }}
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-link px-0" (click)="editarRuta(t)"><i class="pi pi-map me-1"></i>Editar paradas</button>
+            <button class="btn btn-sm btn-link px-0" (click)="verMapa(t)"><i class="pi pi-map-marker me-1"></i>Mapa</button>
+            <button class="btn btn-sm btn-link px-0" (click)="verRutaMapa(t)"><i class="pi pi-globe me-1"></i>OSM</button>
+          </div>
+          <ul class="small mb-0 mt-1 ps-3" *ngIf="t.solicitudes?.length">
+            <li *ngFor="let s of t.solicitudes">
+              {{ s.puntoPartida }} → {{ s.puntoLlegada }} ({{ s.cantidad }} pers.)
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3" *ngIf="trasladoMapa">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">Mapa del traslado T-{{ trasladoMapa.idTraslado }} · {{ trasladoMapa.placa }}</h6>
+      <button class="btn-close" (click)="trasladoMapa = undefined; puntosMapaT = []"></button>
+    </div>
+    <app-mapa [puntos]="puntosMapaT"></app-mapa>
+  </div>
+</div>
+
+<div class="card mt-3" *ngIf="trasladoEditando">
+  <div class="card-body">
+    <div class="d-flex justify-content-between"><h6>Ruta T-{{ trasladoEditando.idTraslado }}</h6><button class="btn-close" (click)="trasladoEditando = undefined"></button></div>
+    <div class="row g-2 mb-2" *ngFor="let p of paradasEditando; let i = index">
+      <div class="col-md-5"><p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="p.punto" placeholder="Punto de parada" [filter]="true" appendTo="body" styleClass="w-100"></p-select></div>
+      <div class="col-md-2"><input type="number" min="0" class="form-control" [(ngModel)]="p.cantidadSube" placeholder="Suben" /></div>
+      <div class="col-md-2"><input type="number" min="0" class="form-control" [(ngModel)]="p.cantidadBaja" placeholder="Bajan" /></div>
+      <div class="col-md-3">
+        <div class="d-flex gap-1">
+          <button class="btn btn-outline-secondary" (click)="moverParada(i, -1)" [disabled]="i === 0" title="Subir"><i class="pi pi-arrow-up"></i></button>
+          <button class="btn btn-outline-secondary" (click)="moverParada(i, 1)" [disabled]="i === paradasEditando.length - 1" title="Bajar"><i class="pi pi-arrow-down"></i></button>
+          <button class="btn btn-outline-danger" (click)="quitarParada(i)" title="Quitar"><i class="pi pi-trash"></i></button>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-outline-secondary me-2" (click)="agregarParada()">Agregar parada</button>
+    <button class="btn btn-primary" (click)="guardarRuta()">Guardar ruta</button>
+  </div>
+</div>
+
+<div class="card mt-3" *ngIf="solicitudMultiple">
+  <div class="card-body">
+    <div class="d-flex justify-content-between"><h6>Distribuir {{ solicitudMultiple.cantidad }} personas</h6><button class="btn-close" (click)="solicitudMultiple = undefined"></button></div>
+    <div class="row g-2 mb-2" *ngFor="let a of asignaciones">
+      <div class="col-md-5"><p-select [options]="unidadesOpciones" optionLabel="etiqueta" optionValue="placa" optionDisabled="sinCupo" [(ngModel)]="a.placa" placeholder="Unidad" appendTo="body" styleClass="w-100"></p-select></div>
+      <div class="col-md-3"><input type="number" min="1" class="form-control" [(ngModel)]="a.cantidad" /></div>
+    </div>
+    <div class="small mb-2">Total requerido: {{ solicitudMultiple.cantidad }} personas.</div>
+    <button class="btn btn-outline-secondary me-2" (click)="agregarUnidad()">Agregar unidad</button>
+    <button class="btn btn-primary" (click)="guardarAsignacionMultiple()">Guardar distribución</button>
+  </div>
+</div>
+
+<!-- RF-003: el jefe de transporte puede modificar cualquier solicitud -->
+<div class="card mt-3" *ngIf="solicitudEditando">
+  <div class="card-body">
+    <div class="d-flex justify-content-between"><h6>Editar solicitud #{{ solicitudEditando.idSolicitud }} — {{ solicitudEditando.nombre }}</h6><button class="btn-close" (click)="solicitudEditando = undefined"></button></div>
+    <div class="row g-2">
+      <div class="col-md-2"><label class="form-label small mb-0">Fecha</label><input type="date" class="form-control" [(ngModel)]="formEdicion.fechaProgramada" /></div>
+      <div class="col-md-2"><label class="form-label small mb-0">Hora</label><input type="time" class="form-control" [(ngModel)]="formEdicion.horaProgramada" /></div>
+      <div class="col-md-3"><label class="form-label small mb-0">P. partida</label><p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="formEdicion.puntoPartida" appendTo="body" styleClass="w-100"></p-select></div>
+      <div class="col-md-3"><label class="form-label small mb-0">P. llegada</label><p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="formEdicion.puntoLlegada" appendTo="body" styleClass="w-100"></p-select></div>
+      <div class="col-md-2"><label class="form-label small mb-0">Cantidad</label><input type="number" min="1" class="form-control" [(ngModel)]="formEdicion.cantidad" /></div>
+      <div class="col-md-4"><label class="form-label small mb-0">Motivo</label><p-select [options]="motivos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="formEdicion.motivo" appendTo="body" styleClass="w-100"></p-select></div>
+      <div class="col-md-6"><label class="form-label small mb-0">Observación</label><input class="form-control" [(ngModel)]="formEdicion.observacion" /></div>
+      <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input id="edEmergencia" type="checkbox" class="form-check-input" [(ngModel)]="formEdicion.esEmergencia" /><label class="form-check-label text-danger" for="edEmergencia">Emergencia</label></div></div>
+    </div>
+    <div class="mt-2">
+      <button class="btn btn-outline-secondary me-2" (click)="solicitudEditando = undefined">Cancelar</button>
+      <button class="btn btn-primary" (click)="guardarEdicion()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
