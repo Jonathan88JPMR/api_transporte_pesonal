@@ -7,6 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { CheckboxModule } from 'primeng/checkbox';
 import { TooltipModule } from 'primeng/tooltip';
+import { DialogModule } from 'primeng/dialog';
 import { TransporteService } from '../../services/transporte.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
 import { AuthService } from '@/app/modules/auth/services/auth.service';
@@ -16,7 +17,7 @@ import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
 @Component({
   selector: 'app-coordinador',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableModule, SelectModule, ButtonModule, TagModule, CheckboxModule, TooltipModule, MapaComponent],
+  imports: [CommonModule, FormsModule, TableModule, SelectModule, ButtonModule, TagModule, CheckboxModule, TooltipModule, DialogModule, MapaComponent],
   templateUrl: './coordinador.component.html',
   styleUrl: './coordinador.component.scss'
 })
@@ -41,6 +42,7 @@ export class CoordinadorComponent implements OnInit {
   solicitudMultiple?: Solicitud;
   asignaciones: AsignacionUnidad[] = [];
   solicitudEditando?: Solicitud;
+  mostrarEdicion = false;
   formEdicion: any = {};
 
   constructor(
@@ -161,6 +163,12 @@ export class CoordinadorComponent implements OnInit {
       observacion: s.observacion,
       esEmergencia: s.esEmergencia
     };
+    this.mostrarEdicion = true;
+  }
+
+  cerrarEdicion() {
+    this.mostrarEdicion = false;
+    this.solicitudEditando = undefined;
   }
 
   async guardarEdicion() {
@@ -173,7 +181,7 @@ export class CoordinadorComponent implements OnInit {
         area: this.solicitudEditando.area,
         usuarioRegistra: this.usuario?.usuario
       });
-      this.solicitudEditando = undefined;
+      this.cerrarEdicion();
       await this.cargar();
     } catch {
       this.alertService.showAlert('error', 'No se pudo guardar la solicitud', 'Error');

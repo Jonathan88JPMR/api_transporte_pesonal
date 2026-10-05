@@ -1,0 +1,20 @@
+- generic [ref=e37]:
+  - generic [ref=e38]:
+    - img "Logo"
+  - heading "Transporte de Personal" [level=1] [ref=e39]
+  - paragraph [ref=e40]: Ingrese sus credenciales
+  - generic [ref=e41]:
+    - generic [ref=e42]:
+      - generic [ref=e43]: Usuario
+      - textbox "Usuario" [ref=e44]
+    - generic [ref=e45]:
+      - generic [ref=e46]: Clave
+      - generic [ref=e47]:
+        - textbox "Clave" [ref=e48]
+        - generic [ref=e49] [cursor=pointer]: 
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - checkbox "Recordarme" [checked] [ref=e52]
+        - generic [ref=e53]: Recordarme
+      - generic [ref=e54]: Olvidaste tu clave?
+    - button "Ingresar" [disabled]

@@ -1,0 +1,19 @@
+- generic [ref=e10]:
+  - img "Logo" [ref=e12]
+  - heading "Transporte de Personal" [level=1] [ref=e13]
+  - paragraph [ref=e14]: Ingrese sus credenciales
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]: Usuario
+      - textbox "Usuario" [ref=e18]: admin.transporte
+    - generic [ref=e19]:
+      - generic [ref=e20]: Clave
+      - generic [ref=e21]:
+        - textbox "Clave" [ref=e22]: Transporte2026!
+        - generic [ref=e23] [cursor=pointer]: 
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - checkbox "Recordarme" [checked] [ref=e26]
+        - generic [ref=e27]: Recordarme
+      - generic [ref=e28]: Olvidaste tu clave?
+    - button "Ingresar" [ref=e29] [cursor=pointer]

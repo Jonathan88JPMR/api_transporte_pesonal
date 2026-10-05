@@ -1,0 +1,155 @@
+- generic [ref=f3e4]:
+  - complementary [ref=f3e5]:
+    - generic [ref=f3e6]:
+      - generic [ref=f3e7]:
+        - generic [ref=f3e8]: 
+        - generic [ref=f3e12]:
+          - generic [ref=f3e13]: Hola
+          - generic [ref=f3e14]: Administrador Transporte
+          - generic [ref=f3e15]: V 0.0.1
+      - navigation [ref=f3e16]:
+        - list [ref=f3e17]:
+          - listitem [ref=f3e18]:  Procesos
+          - listitem [ref=f3e19]:
+            - link " Solicitudes" [ref=f3e20] [cursor=pointer]:
+              - /url: "#/main/solicitudes"
+              - generic [ref=f3e21]: 
+              - generic [ref=f3e23]: Solicitudes
+          - listitem [ref=f3e24]:
+            - link " Coordinación" [ref=f3e25] [cursor=pointer]:
+              - /url: "#/main/coordinador"
+              - generic [ref=f3e26]: 
+              - generic [ref=f3e28]: Coordinación
+          - listitem [ref=f3e29]:
+            - link " Mis servicios" [ref=f3e30] [cursor=pointer]:
+              - /url: "#/main/conductor"
+              - generic [ref=f3e31]: 
+              - generic [ref=f3e33]: Mis servicios
+          - listitem [ref=f3e34]:  Reportes
+          - listitem [ref=f3e35]:
+            - link " Reportes" [ref=f3e36] [cursor=pointer]:
+              - /url: "#/main/reportes"
+              - generic [ref=f3e37]: 
+              - generic [ref=f3e39]: Reportes
+          - listitem [ref=f3e40]:  Configuración
+          - listitem [ref=f3e41]:
+            - link " Administración" [ref=f3e42] [cursor=pointer]:
+              - /url: "#/main/administracion"
+              - generic [ref=f3e43]: 
+              - generic [ref=f3e45]: Administración
+        - generic [ref=f3e48] [cursor=pointer]:
+          - generic [ref=f3e49]: 
+          - text: Cerrar sesión
+  - generic [ref=f3e50]:
+    - banner [ref=f3e51]:
+      - navigation [ref=f3e52]:
+        - list [ref=f3e370]:
+          - listitem [ref=f3e371]:
+            - link "" [ref=f3e372] [cursor=pointer]:
+              - /url: javascript:void(0)
+        - list [ref=f3e54]:
+          - listitem [ref=f3e55]: Administración
+          - generic [ref=f3e56]:
+            - listitem [ref=f3e57]:
+              - link "" [ref=f3e58] [cursor=pointer]:
+                - /url: javascript:void(0)
+            - listitem [ref=f3e61]:
+              - generic [ref=f3e62]:
+                - text: 05/10/2026
+                - generic [ref=f3e63]: 
+            - listitem [ref=f3e64]:
+              - generic [ref=f3e65]:
+                - generic [ref=f3e66]: 
+                - text: ADMINISTRADOR
+            - listitem [ref=f3e67]:
+              - link "" [ref=f3e68] [cursor=pointer]:
+                - /url: javascript:void(0)
+    - generic [ref=f3e461]:
+      - heading "Administración de transporte" [level=5] [ref=f3e463]
+      - tablist [ref=f3e464]:
+        - tab " Usuarios" [ref=f3e465] [cursor=pointer]:
+          - generic [ref=f3e466]: 
+          - text: Usuarios
+        - tab " Conductores" [ref=f3e467] [cursor=pointer]:
+          - generic [ref=f3e468]: 
+          - text: Conductores
+        - tab " Unidades" [ref=f3e469] [cursor=pointer]:
+          - generic [ref=f3e470]: 
+          - text: Unidades
+        - tab " Puntos" [ref=f3e471] [cursor=pointer]:
+          - generic [ref=f3e472]: 
+          - text: Puntos
+        - tab " Motivos" [ref=f3e473] [cursor=pointer]:
+          - generic [ref=f3e474]: 
+          - text: Motivos
+      - generic [ref=f3e477]:
+        - textbox "Usuario" [ref=f3e479]
+        - textbox "Nombre" [ref=f3e481]
+        - combobox [ref=f3e483]:
+          - option "Supervisor"
+          - option "Coordinador"
+          - option "Administrador"
+        - textbox "Área" [ref=f3e485]: admin.transporte
+        - textbox "Clave" [ref=f3e487]: Transporte2026!
+        - button "Crear" [ref=f3e489] [cursor=pointer]
+      - generic [ref=f3e490]:
+        - table [ref=f3e492]:
+          - rowgroup [ref=f3e493]:
+            - row [ref=f3e494]:
+              - cell "ID 1" [ref=f3e495]
+              - cell "Nombre Administrador Transporte" [ref=f3e496]
+              - cell "Usuario admin.transporte" [ref=f3e497]
+              - cell "Rol Administrador" [ref=f3e498]
+              - cell "Área Transportes" [ref=f3e499]
+              - cell "Estado ACTIVO" [ref=f3e500]
+              - cell [ref=f3e501]:
+                - text: Acciones
+                - generic [ref=f3e502]:
+                  - button " Editar" [ref=f3e503] [cursor=pointer]:
+                    - generic [ref=f3e504]: 
+                    - generic [ref=f3e505]: Editar
+                  - button " Desactivar" [ref=f3e506] [cursor=pointer]:
+                    - generic [ref=f3e507]: 
+                    - generic [ref=f3e508]: Desactivar
+            - row [ref=f3e509]:
+              - cell "ID 3" [ref=f3e510]
+              - cell "Nombre Coordinador Transporte" [ref=f3e511]
+              - cell "Usuario coordinador.transporte" [ref=f3e512]
+              - cell "Rol Coordinador" [ref=f3e513]
+              - cell "Área Transportes" [ref=f3e514]
+              - cell "Estado ACTIVO" [ref=f3e515]
+              - cell [ref=f3e516]:
+                - text: Acciones
+                - generic [ref=f3e517]:
+                  - button " Editar" [ref=f3e518] [cursor=pointer]:
+                    - generic [ref=f3e519]: 
+                    - generic [ref=f3e520]: Editar
+                  - button " Desactivar" [ref=f3e521] [cursor=pointer]:
+                    - generic [ref=f3e522]: 
+                    - generic [ref=f3e523]: Desactivar
+            - row [ref=f3e524]:
+              - cell "ID 2" [ref=f3e525]
+              - cell "Nombre Supervisor Transporte" [ref=f3e526]
+              - cell "Usuario supervisor.transporte" [ref=f3e527]
+              - cell "Rol Supervisor" [ref=f3e528]
+              - cell "Área Operaciones" [ref=f3e529]
+              - cell "Estado ACTIVO" [ref=f3e530]
+              - cell [ref=f3e531]:
+                - text: Acciones
+                - generic [ref=f3e532]:
+                  - button " Editar" [ref=f3e533] [cursor=pointer]:
+                    - generic [ref=f3e534]: 
+                    - generic [ref=f3e535]: Editar
+                  - button " Desactivar" [ref=f3e536] [cursor=pointer]:
+                    - generic [ref=f3e537]: 
+                    - generic [ref=f3e538]: Desactivar
+        - generic [ref=f3e539]:
+          - generic [ref=f3e540]: Mostrando 1 a 3 de 3 registros
+          - button "First Page"
+          - button "Previous Page" [disabled]
+          - button "1" [ref=f3e542] [cursor=pointer]
+          - button "Next Page" [disabled]
+          - button "Last Page" [disabled]
+          - generic [ref=f3e543] [cursor=pointer]:
+            - combobox "Rows per page" [ref=f3e544]: "10"
+            - button "dropdown trigger" [ref=f3e545]
