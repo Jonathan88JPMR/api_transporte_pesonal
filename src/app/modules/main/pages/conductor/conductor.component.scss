@@ -1,3 +1,9 @@
 .page-header h5 {
   font-weight: 600;
 }
+
+// Los iconos dentro de botones toman el color del texto del botón
+// (blanco en btn-primary/success/danger, el color del outline en los demás)
+.btn .pi {
+  color: inherit !important;
+}

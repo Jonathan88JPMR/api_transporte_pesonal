@@ -39,8 +39,12 @@
     </tr>
   </ng-template>
   <ng-template #body let-s>
-    <tr (click)="verDetalle(s)" [class.fila-agrupada]="!!s.idTraslado" [class.table-danger]="s.esEmergencia">
-      <td><p-tag [value]="s.esEmergencia ? 'EMERGENCIA' : 'NORMAL'" [severity]="s.esEmergencia ? 'danger' : 'secondary'"></p-tag></td>
+    <tr (click)="verDetalle(s)" [class.fila-agrupada]="!!s.idTraslado"
+        [class.table-danger]="s.prioridad === 'EMERGENCIA'" [class.table-warning]="s.prioridad === 'ALTA'">
+      <td>
+        <p-tag [value]="s.prioridad ?? 'NORMAL'" [severity]="s.prioridad === 'EMERGENCIA' ? 'danger' : s.prioridad === 'ALTA' ? 'warn' : 'secondary'"></p-tag>
+        <p-tag *ngIf="s.esEmergencia" value="MÉDICA" severity="danger" icon="pi pi-heart" class="ms-1"></p-tag>
+      </td>
       <td>{{ s.nombre }}</td>
       <td>{{ s.fechaProgramada | date:'dd/MM/yyyy' }} {{ s.horaProgramada }}</td>
       <td>{{ s.area }}</td>
@@ -48,7 +52,7 @@
       <td>{{ s.puntoLlegada }}</td>
       <td>{{ s.cantidad }}</td>
       <td>{{ s.motivo }}</td>
-      <td>{{ s.placa }}</td>
+      <td>{{ placaTexto(s) }}</td>
       <td>
         <p-tag *ngIf="cupoDe(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>
       </td>
@@ -56,11 +60,11 @@
       <td>
         <div class="d-flex gap-1 align-items-center justify-content-center">
           <button class="btn btn-sm btn-outline-primary" (click)="$event.stopPropagation(); editar(s)" pTooltip="Editar"
-                  tooltipPosition="top" *ngIf="!s.realizado && s.estado !== 'ANULADO'">
+                  tooltipPosition="top" *ngIf="s.estado === 'PENDIENTE'">
             <i class="pi pi-pencil"></i><span class="accion-label">Editar</span>
           </button>
           <button class="btn btn-sm btn-outline-danger" (click)="$event.stopPropagation(); anular(s)" pTooltip="Anular"
-                  tooltipPosition="top" *ngIf="s.estado !== 'ANULADO'">
+                  tooltipPosition="top" *ngIf="(s.estado === 'PENDIENTE' || s.estado === 'ASIGNADO') && !s.realizado">
             <i class="pi pi-times"></i><span class="accion-label">Anular</span>
           </button>
         </div>
@@ -81,12 +85,12 @@
       <input class="form-control" [value]="usuario?.nombre ?? usuario?.usuario" disabled />
     </div>
     <div>
-      <label class="form-label">FECHA PROGRAMADA *</label>
-      <input type="date" class="form-control" formControlName="fechaProgramada" />
+      <label class="form-label">FECHA PROGRAMADA <span class="text-muted fw-normal">(automática)</span></label>
+      <input type="date" class="form-control" formControlName="fechaProgramada" readonly tabindex="-1" />
     </div>
     <div>
-      <label class="form-label">Hr. PROGRAMADA *</label>
-      <input type="time" class="form-control" formControlName="horaProgramada" />
+      <label class="form-label">Hr. PROGRAMADA <span class="text-muted fw-normal">(automática)</span></label>
+      <input type="time" class="form-control" formControlName="horaProgramada" readonly tabindex="-1" />
     </div>
     <div>
       <label class="form-label">P. PARTIDA *</label>
@@ -111,9 +115,18 @@
       <label class="form-label">OBSERVACIÓN</label>
       <textarea class="form-control" rows="2" formControlName="observacion"></textarea>
     </div>
+    <div>
+      <label class="form-label">PRIORIDAD</label>
+      <select class="form-select" formControlName="prioridad">
+        <option value="NORMAL">Normal</option>
+        <option value="ALTA">Alta</option>
+        <option value="EMERGENCIA">Emergencia</option>
+      </select>
+    </div>
     <div class="form-check">
-      <input id="esEmergencia" type="checkbox" class="form-check-input" formControlName="esEmergencia" />
-      <label class="form-check-label text-danger fw-semibold" for="esEmergencia">Emergencia médica</label>
+      <input id="esEmergencia" type="checkbox" class="form-check-input" formControlName="esEmergencia"
+             (change)="alCambiarEmergencia(form.get('esEmergencia')?.value)" />
+      <label class="form-check-label text-danger fw-semibold" for="esEmergencia">Es emergencia médica</label>
     </div>
   </form>
   <ng-template #footer>
@@ -124,10 +137,11 @@
 
 <!-- Detalle -->
 <p-dialog [(visible)]="mostrarDetalle" [modal]="true" [style]="{ width: '420px' }"
-          [header]="detalle?.nombre ?? 'Detalle'" [draggable]="false">
+          [header]="detalle?.nombre ?? 'Detalle'" [draggable]="false"
+          (onHide)="detenerPollingSiCerrado()">
   <ng-container *ngIf="detalle">
     <dl class="detalle-lista">
-      <dt>PRIORIDAD</dt><dd>{{ detalle.esEmergencia ? 'EMERGENCIA MÉDICA' : 'NORMAL' }}</dd>
+      <dt>PRIORIDAD</dt><dd>{{ detalle.prioridad ?? 'NORMAL' }}<span *ngIf="detalle.esEmergencia" class="text-danger fw-semibold"> · MÉDICA</span></dd>
       <dt>NOMBRE</dt><dd>{{ detalle.nombre }}</dd>
       <dt>FECHA PROGRAMADA</dt><dd>{{ detalle.fechaProgramada | date:'dd/MM/yyyy' }}</dd>
       <dt>Hr. PROGRAMADA</dt><dd>{{ detalle.horaProgramada }}</dd>
@@ -137,34 +151,66 @@
       <dt>CANTIDAD</dt><dd>{{ detalle.cantidad }}</dd>
       <dt>MOTIVO</dt><dd>{{ detalle.motivo }}</dd>
       <dt>OBSERVACIÓN</dt><dd>{{ detalle.observacion || '-' }}</dd>
-      <dt>PLACA</dt><dd>{{ detalle.placa }}</dd>
+      <dt>PLACA</dt><dd>{{ placaTexto(detalle) }}</dd>
       <dt>ESTADO</dt><dd>{{ detalle.estado }}</dd>
       <dt>REALIZADO</dt><dd>{{ detalle.realizado ? 'SI' : 'NO' }}</dd>
-      <ng-container *ngIf="trasladoDe(detalle) as t">
-        <dt>TRASLADO</dt><dd>T-{{ t.idTraslado }} · {{ t.placa }}</dd>
-        <dt *ngIf="t.ruta">RUTA</dt><dd *ngIf="t.ruta">{{ t.ruta }}</dd>
+      <ng-container *ngIf="trasladosDe(detalle).length">
+        <dt>TRASLADO</dt>
+        <dd><span *ngFor="let t of trasladosDe(detalle)" class="me-2 text-nowrap">T-{{ t.idTraslado }} · {{ t.placa }}</span></dd>
       </ng-container>
     </dl>
-    <div *ngIf="trasladoDe(detalle)?.paradas?.length" class="mt-2">
-      <h6>Paradas del traslado</h6>
-      <p-table [value]="trasladoDe(detalle)?.paradas ?? []"
+    <div *ngFor="let t of trasladosDe(detalle)" class="mt-2">
+      <h6>Paradas T-{{ t.idTraslado }} · {{ t.placa }}
+        <span class="text-muted small fw-normal">(seguimiento en vivo)</span>
+      </h6>
+      <p-table *ngIf="t.paradas?.length" [value]="paradasDe(t)"
                [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"
                styleClass="p-datatable-sm p-datatable-striped">
         <ng-template #header>
-          <tr><th>#</th><th>Punto</th><th>Suben</th><th>Bajan</th></tr>
+          <tr><th>#</th><th>Punto</th><th>Plan</th><th>Real</th><th>Estado</th><th>Hora</th></tr>
         </ng-template>
         <ng-template #body let-p let-i="rowIndex">
-          <tr><td>{{ p.orden ?? i + 1 }}</td><td>{{ p.punto }}</td><td>{{ p.cantidadSube }}</td><td>{{ p.cantidadBaja }}</td></tr>
+          <tr [class.table-info]="p.estado === 'EN_PARADA'"
+              [class.table-success]="p.estado === 'REALIZADA'"
+              [class.table-secondary]="p.estado === 'OMITIDA'">
+            <td>{{ p.orden ?? i + 1 }}</td>
+            <td>
+              {{ p.punto }}
+              <div class="small text-muted" *ngIf="p.motivoOmision">{{ p.motivoOmision }}</div>
+            </td>
+            <td>↑ {{ p.cantidadSube }} · ↓ {{ p.cantidadBaja }}</td>
+            <td>
+              <ng-container *ngIf="p.estado === 'REALIZADA'; else sinReal">↑ {{ p.subieronReal }} · ↓ {{ p.bajaronReal }}</ng-container>
+              <ng-template #sinReal>—</ng-template>
+            </td>
+            <td><p-tag [value]="p.estado ?? 'PENDIENTE'" [severity]="severidadParada(p.estado)"></p-tag></td>
+            <td class="text-nowrap">
+              <span *ngIf="p.horaLlegada">{{ p.horaLlegada | date:'HH:mm' }}</span><span *ngIf="p.horaSalida"> → {{ p.horaSalida | date:'HH:mm' }}</span>
+            </td>
+          </tr>
         </ng-template>
       </p-table>
-    </div>
-    <div *ngIf="(trasladoDe(detalle)?.solicitudes?.length ?? 0) > 1" class="mt-2">
-      <h6>Solicitudes del traslado</h6>
-      <ul class="small mb-0 ps-3">
-        <li *ngFor="let s of trasladoDe(detalle)?.solicitudes">
-          {{ s.nombre }} — {{ s.puntoPartida }} → {{ s.puntoLlegada }} ({{ s.cantidad }} pers.)
-        </li>
-      </ul>
+      <div class="small text-muted" *ngIf="t.ruta"><i class="pi pi-map-marker me-1"></i>{{ t.ruta }}</div>
+      <div class="small mt-1">
+        <ng-container *ngIf="t.ultimaUbicacionAt; else sinGps">
+          <i class="pi pi-compass me-1"></i>Unidad · GPS {{ horaGps(t.ultimaUbicacionAt) }}
+          <span *ngIf="distanciaParada(t)" class="fw-semibold"> — {{ distanciaParada(t) }}</span>
+        </ng-container>
+        <ng-template #sinGps>
+          <span class="text-muted"><i class="pi pi-info-circle me-1"></i>Sin señal GPS todavía</span>
+        </ng-template>
+        <button class="btn btn-sm btn-link px-2 py-0" (click)="verMapaTraslado(t)">
+          <i class="pi pi-map-marker me-1"></i>Ver mapa
+        </button>
+      </div>
+      <div *ngIf="(t.solicitudes?.length ?? 0) > 1" class="mt-1">
+        <h6 class="small mb-1">Solicitudes del traslado</h6>
+        <ul class="small mb-0 ps-3">
+          <li *ngFor="let s of t.solicitudes">
+            {{ s.nombre }} — {{ s.puntoPartida }} → {{ s.puntoLlegada }} ({{ s.cantidad }} pers.)
+          </li>
+        </ul>
+      </div>
     </div>
     <div *ngIf="detalle.estado === 'PENDIENTE' && traslados.length" class="mt-3">
       <h6>Acoplar a traslado con cupo</h6>
@@ -173,4 +219,20 @@
       </button>
     </div>
   </ng-container>
+</p-dialog>
+
+<!-- Ubicación de la unidad: ruta de la solicitud + punto azul = posición GPS real -->
+<p-dialog [(visible)]="mapaAbierto" [modal]="true" [draggable]="false" [resizable]="false"
+          [style]="{ width: '720px', 'max-width': '95vw' }"
+          [header]="'Ubicación T-' + trasladoMapa?.idTraslado + ' · ' + (trasladoMapa?.placa ?? '')">
+  <app-mapa [puntos]="puntosMapaT" [origen]="origenMapaT"></app-mapa>
+  <div class="small text-muted mt-2">
+    <ng-container *ngIf="trasladoMapa?.ultimaUbicacionAt; else sinGpsMapa">
+      <i class="pi pi-circle-fill me-1" style="color:#1565c0"></i>Unidad · última señal GPS {{ horaGps(trasladoMapa?.ultimaUbicacionAt) }}
+      <span *ngIf="trasladoMapa && distanciaParada(trasladoMapa)"> — {{ distanciaParada(trasladoMapa!) }}</span>
+    </ng-container>
+    <ng-template #sinGpsMapa>
+      <i class="pi pi-info-circle me-1"></i>Sin señal GPS todavía — la unidad reporta su posición cada 30 segundos mientras está en ruta
+    </ng-template>
+  </div>
 </p-dialog>

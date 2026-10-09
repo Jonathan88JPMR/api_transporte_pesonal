@@ -6,6 +6,16 @@ tr.fila-agrupada {
   background-color: #e8f5ef;
 }
 
+tr.fila-pendiente {
+  background-color: #fff7e0;
+  border-left: 3px solid #f5b301;
+}
+
+tr.fila-emergencia {
+  background-color: #fde8e8;
+  border-left: 3px solid #dc2626;
+}
+
 .traslado-card {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
@@ -14,4 +24,8 @@ tr.fila-agrupada {
 
 .ruta {
   color: #238664;
+}
+
+:host ::ng-deep .tooltip-multilinea .p-tooltip-text {
+  white-space: pre-line;
 }

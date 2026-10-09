@@ -6,7 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TransporteService } from '../../services/transporte.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
-import { Auditoria, IndicadoresReporte, Solicitud } from '@/app/models/transporte.models';
+import { Auditoria, IndicadoresReporte, Solicitud, Unidad } from '@/app/models/transporte.models';
 
 @Component({
   selector: 'app-reportes',
@@ -20,6 +20,8 @@ export class ReportesComponent implements OnInit {
   registros: Solicitud[] = [];
   indicadores?: IndicadoresReporte;
   auditoria: Auditoria[] = [];
+  unidadesCatalogo: Unidad[] = [];
+  porciones: Record<number, { placa: string; cantidad: number; estado: string }[]> = {};
   desde?: string;
   hasta?: string;
   cargando = false;
@@ -45,10 +47,14 @@ export class ReportesComponent implements OnInit {
   async cargar() {
     this.cargando = true;
     try {
+      if (!this.unidadesCatalogo.length) {
+        this.unidadesCatalogo = await this.transporteService.listarUnidades();
+      }
       [this.registros, this.indicadores] = await Promise.all([
         this.transporteService.reporteSolicitudes(this.desde, this.hasta),
         this.transporteService.reporteIndicadores(this.desde, this.hasta)
       ]);
+      void this.cargarPorciones();
     } catch {
       this.alertService.showAlert('error', 'No se pudo generar el reporte', 'Error');
     } finally {
@@ -69,6 +75,28 @@ export class ReportesComponent implements OnInit {
     return [...new Set(this.registros.map(r => r.usuarioRegistra).filter((x): x is string => !!x))].sort();
   }
 
+  async cargarPorciones() {
+    const mapa: Record<number, { placa: string; cantidad: number; estado: string }[]> = {};
+    for (const { placa, servicios } of await this.transporteService.serviciosPorPlacas(this.unidadesCatalogo.map(u => u.placa))) {
+      for (const s of servicios) {
+        if (s.idSolicitudUnidad != null) {
+          (mapa[s.idSolicitud] ??= []).push({ placa, cantidad: s.cantidad, estado: s.estado });
+        }
+      }
+    }
+    this.porciones = mapa;
+  }
+
+  placasDe(r: Solicitud): string[] {
+    return this.porciones[r.idSolicitud]?.map(p => p.placa) ?? [];
+  }
+
+  placaTexto(r: Solicitud): string {
+    if (r.placa !== 'MULTIPLE') return r.placa ?? '';
+    const partes = this.placasDe(r);
+    return partes.length ? `MULTIPLE · ${partes.join(' · ')}` : 'MULTIPLE';
+  }
+
   get placas(): string[] {
     return [...new Set(this.registros.map(r => r.placa).filter((x): x is string => !!x))].sort();
   }
@@ -76,7 +104,7 @@ export class ReportesComponent implements OnInit {
   get registrosFiltrados(): Solicitud[] {
     return this.registros.filter(r =>
       (!this.filtroSupervisor || r.usuarioRegistra === this.filtroSupervisor) &&
-      (!this.filtroPlaca || r.placa === this.filtroPlaca) &&
+      (!this.filtroPlaca || r.placa === this.filtroPlaca || this.placasDe(r).includes(this.filtroPlaca)) &&
       (!this.filtroEstado || r.estado === this.filtroEstado));
   }
 
@@ -92,9 +120,9 @@ export class ReportesComponent implements OnInit {
   imprimirPdf(): void { window.print(); }
 
   exportarCsv(): void {
-    const columnas = ['Fecha', 'Solicitante', 'Área', 'Hora', 'Origen', 'Destino', 'Cantidad', 'Motivo', 'Emergencia', 'Placa', 'Estado'];
+    const columnas = ['Fecha', 'Solicitante', 'Área', 'Hora', 'Origen', 'Destino', 'Cantidad', 'Motivo', 'Prioridad', 'Placa', 'Estado'];
     const filas = this.registrosFiltrados.map(r => [r.fechaProgramada, r.nombre, r.area ?? '', r.horaProgramada,
-      r.puntoPartida, r.puntoLlegada, r.cantidad, r.motivo ?? '', r.esEmergencia ? 'Sí' : 'No', r.placa ?? '', r.estado]);
+      r.puntoPartida, r.puntoLlegada, r.cantidad, r.motivo ?? '', r.prioridad ?? (r.esEmergencia ? 'EMERGENCIA' : 'NORMAL'), this.placaTexto(r), r.estado]);
     const csv = [columnas, ...filas].map(f => f.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const enlace = document.createElement('a');
     enlace.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
@@ -104,6 +132,7 @@ export class ReportesComponent implements OnInit {
   }
 
   private toIso(d: Date): string {
-    return d.toISOString().slice(0, 10);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   }
 }

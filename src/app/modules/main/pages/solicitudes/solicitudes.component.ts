@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TableModule } from 'primeng/table';
@@ -11,25 +11,28 @@ import { TooltipModule } from 'primeng/tooltip';
 import { TransporteService } from '../../services/transporte.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
 import { AuthService } from '@/app/modules/auth/services/auth.service';
-import { Motivo, Punto, Solicitud, Traslado, Unidad, Usuario } from '@/app/models/transporte.models';
+import { EstadoParada, Motivo, Parada, Punto, Solicitud, Traslado, Unidad, Usuario } from '@/app/models/transporte.models';
+import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
 
 @Component({
   selector: 'app-solicitudes',
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, FormsModule,
-    TableModule, DialogModule, SelectModule, InputNumberModule, ButtonModule, TagModule, TooltipModule
+    TableModule, DialogModule, SelectModule, InputNumberModule, ButtonModule, TagModule, TooltipModule,
+    MapaComponent
   ],
   templateUrl: './solicitudes.component.html',
   styleUrl: './solicitudes.component.scss'
 })
-export class SolicitudesComponent implements OnInit {
+export class SolicitudesComponent implements OnInit, OnDestroy {
 
   solicitudes: Solicitud[] = [];
   puntos: Punto[] = [];
   motivos: Motivo[] = [];
   traslados: Traslado[] = [];
   unidades: Unidad[] = [];
+  porciones: Record<number, { placa: string; cantidad: number; estado: string }[]> = {};
   usuario?: Usuario;
   filtroDesde = '';
   filtroHasta = '';
@@ -56,6 +59,7 @@ export class SolicitudesComponent implements OnInit {
       cantidad: [1, [Validators.required, Validators.min(1)]],
       motivo: [null, Validators.required],
       observacion: [''],
+      prioridad: ['NORMAL'],
       esEmergencia: [false]
     });
   }
@@ -68,7 +72,8 @@ export class SolicitudesComponent implements OnInit {
   async cargar() {
     this.cargando = true;
     try {
-      const todas = await this.transporteService.listarSolicitudes({});
+      // El backend filtra por área cuando quien consulta es supervisor (SPTRANS)
+      const todas = await this.transporteService.listarSolicitudes({ usuario: this.usuario?.usuario });
       let { filtroDesde: desde, filtroHasta: hasta } = this;
       if (desde && hasta && desde > hasta) [desde, hasta] = [hasta, desde];
       this.solicitudes = todas.filter(s => {
@@ -95,9 +100,29 @@ export class SolicitudesComponent implements OnInit {
         this.transporteService.listarMotivos(),
         this.transporteService.listarUnidades()
       ]);
+      void this.cargarPorciones();
     } catch {
       // catálogos no críticos para listar
     }
+  }
+
+  // Porciones de solicitudes repartidas en varias unidades (idSolicitudUnidad)
+  async cargarPorciones() {
+    const mapa: Record<number, { placa: string; cantidad: number; estado: string }[]> = {};
+    for (const { placa, servicios } of await this.transporteService.serviciosPorPlacas(this.unidades.map(u => u.placa))) {
+      for (const s of servicios) {
+        if (s.idSolicitudUnidad != null) {
+          (mapa[s.idSolicitud] ??= []).push({ placa, cantidad: s.cantidad, estado: s.estado });
+        }
+      }
+    }
+    this.porciones = mapa;
+  }
+
+  placaTexto(s: Solicitud): string {
+    if (s.placa !== 'MULTIPLE') return s.placa ?? '';
+    const partes = this.porciones[s.idSolicitud]?.map(p => `${p.placa} (${p.cantidad})`);
+    return partes?.length ? `MULTIPLE · ${partes.join(' · ')}` : 'MULTIPLE';
   }
 
   async cargarTraslados() {
@@ -121,7 +146,12 @@ export class SolicitudesComponent implements OnInit {
 
   crear() {
     this.editando = undefined;
-    this.form.reset({ fechaProgramada: this.fechaHoy(), cantidad: 1, observacion: '', esEmergencia: false });
+    // Fecha y hora siempre del sistema — el backend además las fuerza a GETDATE()
+    this.form.reset({
+      fechaProgramada: this.fechaHoy(), horaProgramada: this.horaAhora(),
+      cantidad: 1, observacion: '', prioridad: 'NORMAL', esEmergencia: false
+    });
+    this.form.get('prioridad')?.enable({ emitEvent: false });
     this.mostrarDialogo = true;
   }
 
@@ -135,14 +165,130 @@ export class SolicitudesComponent implements OnInit {
       cantidad: s.cantidad,
       motivo: s.motivo,
       observacion: s.observacion,
+      prioridad: s.prioridad ?? 'NORMAL',
       esEmergencia: s.esEmergencia
     });
+    if (s.esEmergencia) this.form.get('prioridad')?.disable({ emitEvent: false });
+    else this.form.get('prioridad')?.enable({ emitEvent: false });
     this.mostrarDialogo = true;
+  }
+
+  // Emergencia médica: aplica EMERGENCIA + 1 persona + motivo Salud +
+  // destino Tópico por defecto (cantidad/motivo/destino quedan editables)
+  alCambiarEmergencia(marcado: boolean) {
+    if (marcado) {
+      const salud = this.motivos.find(m => m.nombre?.toUpperCase().includes('SALUD'))?.nombre;
+      const topico = this.puntos.find(p => p.nombre?.toUpperCase().includes('TOPICO'))?.nombre;
+      this.form.patchValue({
+        prioridad: 'EMERGENCIA',
+        cantidad: 1,
+        ...(salud ? { motivo: salud } : {}),
+        ...(topico ? { puntoLlegada: topico } : {})
+      });
+      this.form.get('prioridad')?.disable({ emitEvent: false });
+    } else {
+      this.form.patchValue({ prioridad: 'NORMAL' });
+      this.form.get('prioridad')?.enable({ emitEvent: false });
+    }
   }
 
   verDetalle(s: Solicitud) {
     this.detalle = s;
     this.mostrarDetalle = true;
+    void this.cargarTraslados(); // refrescar el estado de las paradas al abrir
+    this.iniciarPolling();
+  }
+
+  // ===== Seguimiento GPS (solo lectura, para el supervisor) =====
+
+  trasladoMapa?: Traslado;
+  puntosMapaT: PuntoMapa[] = [];
+  origenMapaT?: PuntoMapa;
+  private timerSeguimiento?: ReturnType<typeof setInterval>;
+
+  get mapaAbierto(): boolean { return !!this.trasladoMapa; }
+  set mapaAbierto(v: boolean) {
+    if (!v) {
+      this.trasladoMapa = undefined;
+      this.puntosMapaT = [];
+      this.origenMapaT = undefined;
+      this.detenerPollingSiCerrado();
+    }
+  }
+
+  horaGps(fecha?: string | null): string {
+    if (!fecha) return '—';
+    return new Date(fecha).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  // Distancia aproximada entre la última posición GPS de la unidad y la
+  // próxima parada pendiente — respuesta rápida a "¿ya está cerca?"
+  distanciaParada(t: Traslado): string {
+    if (t.ultimaLatitud == null || t.ultimaLongitud == null) return '';
+    const prox = this.paradasDe(t).find(p => (p.estado ?? 'PENDIENTE') === 'PENDIENTE' || p.estado === 'EN_PARADA');
+    const punto = prox && this.puntos.find(x => x.idPunto === prox.idPunto || x.nombre === prox.punto);
+    if (!punto?.latitud || !punto.longitud || !prox) return '';
+    const km = this.haversine(t.ultimaLatitud, t.ultimaLongitud, punto.latitud, punto.longitud);
+    return km < 1
+      ? `a ~${Math.round(km * 1000)} m de ${punto.nombre}`
+      : `a ~${km.toFixed(1)} km de ${punto.nombre}`;
+  }
+
+  private haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const rad = (x: number) => x * Math.PI / 180;
+    const dLat = rad(lat2 - lat1), dLon = rad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * 6371 * Math.asin(Math.sqrt(a));
+  }
+
+  // Mapa de la ruta con la posición real de la unidad (punto azul)
+  verMapaTraslado(t: Traslado) {
+    this.trasladoMapa = t;
+    this.puntosMapaT = this.paradasDe(t)
+      .map(p => this.puntos.find(pt => pt.idPunto === p.idPunto || pt.nombre === p.punto))
+      .filter(pt => pt?.latitud != null && pt.longitud != null)
+      .map(pt => ({ latitud: pt!.latitud!, longitud: pt!.longitud!, etiqueta: pt!.nombre }));
+    this.configurarOrigenMapa(t);
+    if (!this.puntosMapaT.length && !this.origenMapaT) {
+      this.trasladoMapa = undefined;
+      this.alertService.showAlert('warning', 'No hay coordenadas de la ruta ni señal GPS todavía', 'Atención');
+      return;
+    }
+    this.iniciarPolling();
+  }
+
+  private configurarOrigenMapa(t: Traslado) {
+    this.origenMapaT = t.ultimaLatitud != null && t.ultimaLongitud != null
+      ? { latitud: t.ultimaLatitud, longitud: t.ultimaLongitud,
+          etiqueta: `${t.placa} · GPS ${this.horaGps(t.ultimaUbicacionAt)}` }
+      : undefined;
+  }
+
+  // Mientras el detalle o el mapa están abiertos, las paradas y el GPS se
+  // refrescan cada 30 s — seguimiento en vivo sin recargar la página
+  private iniciarPolling() {
+    if (this.timerSeguimiento) return;
+    this.timerSeguimiento = setInterval(() => void this.refrescarSeguimiento(), 30000);
+  }
+
+  private async refrescarSeguimiento() {
+    await this.cargarTraslados();
+    const id = this.trasladoMapa?.idTraslado;
+    if (id != null) {
+      const t = this.traslados.find(x => x.idTraslado === id);
+      if (t) { this.trasladoMapa = t; this.configurarOrigenMapa(t); }
+    }
+  }
+
+  detenerPollingSiCerrado() {
+    if (!this.mostrarDetalle && !this.trasladoMapa && this.timerSeguimiento) {
+      clearInterval(this.timerSeguimiento);
+      this.timerSeguimiento = undefined;
+    }
+  }
+
+  ngOnDestroy() {
+    if (this.timerSeguimiento) clearInterval(this.timerSeguimiento);
   }
 
   async guardar() {
@@ -168,18 +314,49 @@ export class SolicitudesComponent implements OnInit {
   }
 
   private fechaHoy(): string {
-    return new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  private horaAhora(): string {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  // Traslados de la solicitud: el directo (simple/unida) mas el de cada
+  // porcion cuando esta repartida en varias unidades (MULTIPLE)
+  trasladosDe(s?: Solicitud): Traslado[] {
+    const ids = new Set<number>();
+    if (s?.idTraslado) ids.add(s.idTraslado);
+    for (const p of s?.porciones ?? []) if (p.idTraslado) ids.add(p.idTraslado);
+    return this.traslados.filter(t => ids.has(t.idTraslado));
   }
 
   trasladoDe(s?: Solicitud): Traslado | undefined {
-    return this.traslados.find(t => t.idTraslado === s?.idTraslado);
+    return this.trasladosDe(s)[0];
+  }
+
+  // Paradas del traslado, en orden de recorrido (solo lectura)
+  paradasDe(t?: Traslado): Parada[] {
+    return [...(t?.paradas ?? [])].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  }
+
+  severidadParada(estado?: EstadoParada): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+    switch (estado ?? 'PENDIENTE') {
+      case 'REALIZADA': return 'success';
+      case 'EN_PARADA': return 'info';
+      case 'OMITIDA': return 'danger';
+      default: return 'warn';
+    }
   }
 
   cupoDe(s: Solicitud): { ocupada: number; capacidad: number } | null {
     const t = this.trasladoDe(s);
     if (t) {
       const unidad = this.unidades.find(u => u.placa === t.placa);
-      const ocupada = (t.solicitudes ?? []).reduce((a, x) => a + (x.cantidad ?? 0), 0);
+      const ocupada = (t.solicitudes ?? []).filter(x => x.estado !== 'ANULADO').reduce((a, x) => a + (x.cantidad ?? 0), 0);
       return unidad ? { ocupada, capacidad: unidad.capacidad } : null;
     }
     if (s.placa && s.placa !== 'MULTIPLE') {

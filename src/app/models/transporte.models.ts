@@ -6,6 +6,7 @@ export interface Usuario {
   rol: string;
   placa?: string | null;
   area?: string | null;
+  idArea?: number | null;
   token?: string;
 }
 
@@ -15,6 +16,7 @@ export interface Solicitud {
   idSolicitudUnidad?: number | null;
   nombre: string;
   area?: string | null;
+  idArea?: number | null;
   fechaProgramada: string;
   horaProgramada: string;
   puntoPartida: string;
@@ -22,6 +24,7 @@ export interface Solicitud {
   cantidad: number;
   motivo?: string | null;
   observacion?: string | null;
+  prioridad?: string;
   esEmergencia: boolean;
   placa?: string | null;
   realizado: boolean;
@@ -32,6 +35,18 @@ export interface Solicitud {
   fechaFin?: string | null;
   ruta?: string | null;
   paradas?: Parada[] | null;
+  // Porciones cuando la solicitud se reparte en varias unidades (MULTIPLE)
+  porciones?: PorcionSolicitud[] | null;
+}
+
+// Una fracción de una solicitud asignada a una unidad concreta.
+// Cada porción tiene su propio traslado (con sus paradas).
+export interface PorcionSolicitud {
+  idSolicitudUnidad: number;
+  placa: string;
+  cantidadAsignada: number;
+  estado: string;
+  idTraslado?: number | null;
 }
 
 export interface Traslado {
@@ -42,6 +57,25 @@ export interface Traslado {
   fechaCreacion?: string;
   solicitudes?: Solicitud[];
   paradas?: Parada[];
+  // Última posición GPS reportada por la unidad en ruta
+  ultimaLatitud?: number | null;
+  ultimaLongitud?: number | null;
+  ultimaUbicacionAt?: string | null;
+}
+
+export type EstadoParada = 'PENDIENTE' | 'EN_PARADA' | 'REALIZADA' | 'OMITIDA';
+
+// Qué grupo de pasajeros (solicitud) sube o baja en la parada.
+// Permite autogenerar la ruta al unir solicitudes y validar conteos.
+export interface ParadaDetalle {
+  idParadaDetalle?: number;
+  idParada?: number;
+  idSolicitud: number;
+  idSolicitudUnidad?: number | null;
+  tipo: 'S' | 'B';               // S = sube, B = baja
+  cantidadPlaneada: number;
+  cantidadReal?: number | null;
+  nombre?: string;               // solicitante, solo para mostrar
 }
 
 export interface Parada {
@@ -49,8 +83,38 @@ export interface Parada {
   idPunto?: number | null;
   punto: string;
   orden?: number;
+  // Planeado (coordinador)
   cantidadSube: number;
   cantidadBaja: number;
+  // Real (conductor)
+  subieronReal?: number | null;
+  bajaronReal?: number | null;
+  estado?: EstadoParada;
+  horaLlegada?: string | null;
+  horaSalida?: string | null;
+  motivoOmision?: string | null;
+  detalle?: ParadaDetalle[];
+}
+
+// Resumen de avance de un traslado para el polling del coordinador.
+export interface ProgresoTraslado {
+  idTraslado: number;
+  placa: string;
+  estadoTraslado: string;
+  paradaActual?: number | null;  // orden de la parada en curso (1-based)
+  totalParadas: number;
+  realizadas: number;
+  aBordo: number;
+  paradas: Parada[];
+  ultimaLatitud?: number | null;
+  ultimaLongitud?: number | null;
+  ultimaUbicacionAt?: string | null;
+}
+
+export interface PosicionGeo {
+  latitud: number;
+  longitud: number;
+  precision?: number;
 }
 
 export interface AsignacionUnidad {
@@ -99,4 +163,10 @@ export interface Unidad {
 export interface Motivo {
   idMotivo: number;
   nombre: string;
+}
+
+export interface Area {
+  idArea: number;
+  nombre: string;
+  activo?: boolean;
 }

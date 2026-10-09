@@ -3,14 +3,20 @@
     <h5 class="mb-0">Mis servicios</h5>
     <small class="text-muted" *ngIf="usuario?.placa">Unidad: {{ usuario!.placa }}</small>
   </div>
-  <button class="btn btn-outline-primary btn-sm" (click)="cargar()">
-    <i class="pi pi-refresh me-1"></i> Actualizar
-  </button>
+  <div class="d-flex gap-2 align-items-center">
+    <input type="date" class="form-control form-control-sm" style="width: auto"
+           [(ngModel)]="fechaFiltro" (change)="cargar()" />
+    <button class="btn btn-outline-secondary btn-sm" *ngIf="fechaFiltro" (click)="verTodas()">Todas</button>
+    <button class="btn btn-outline-secondary btn-sm" *ngIf="!fechaFiltro" (click)="verHoy()">Hoy</button>
+    <button class="btn btn-outline-primary btn-sm" (click)="cargar()">
+      <i class="pi pi-refresh me-1"></i> Actualizar
+    </button>
+  </div>
 </div>
 
 <div class="alert alert-info py-2" *ngIf="rutaDelDia">
   <i class="pi pi-map-marker me-1"></i>
-  <strong>Ruta:</strong> {{ rutaDelDia }}
+  <strong>Ruta del día:</strong> {{ rutaDelDia }}
 </div>
 
 <p-table [value]="servicios" [loading]="cargando" [rowHover]="true"
@@ -33,7 +39,7 @@
     </tr>
   </ng-template>
   <ng-template #body let-s>
-    <tr [class.table-success]="s.realizado" [class.table-danger]="s.esEmergencia">
+    <tr [class.table-success]="s.realizado" [class.table-danger]="s.prioridad === 'EMERGENCIA' || s.esEmergencia">
       <td>{{ s.fechaProgramada | date:'dd/MM' }} {{ s.horaProgramada }}</td>
       <td>{{ s.nombre }}</td>
       <td>{{ s.puntoPartida }}</td>
@@ -43,8 +49,16 @@
         <p-tag *ngIf="cupoServicio(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>
       </td>
       <td>{{ s.motivo }}</td>
-      <td><p-tag [value]="s.esEmergencia ? 'EMERGENCIA' : 'NORMAL'" [severity]="s.esEmergencia ? 'danger' : 'secondary'"></p-tag></td>
-      <td><p-tag [value]="s.estado" [severity]="s.estado === 'REALIZADO' ? 'success' : s.estado === 'EN_RUTA' ? 'info' : 'warn'"></p-tag></td>
+      <td>
+        <p-tag [value]="s.prioridad ?? (s.esEmergencia ? 'EMERGENCIA' : 'NORMAL')" [severity]="s.prioridad === 'EMERGENCIA' || s.esEmergencia ? 'danger' : s.prioridad === 'ALTA' ? 'warn' : 'secondary'"></p-tag>
+        <p-tag *ngIf="s.esEmergencia" value="MÉDICA" severity="danger" icon="pi pi-heart" class="ms-1"></p-tag>
+      </td>
+      <td>
+        <p-tag [value]="s.estado" [severity]="s.estado === 'REALIZADO' ? 'success' : s.estado === 'EN_RUTA' ? 'info' : 'warn'"></p-tag>
+        <div class="small text-muted mt-1" *ngIf="s.paradas?.length">
+          <i class="pi pi-flag"></i> Paradas {{ resumenParadas(s) }}
+        </div>
+      </td>
       <td>
         <div class="d-flex gap-1 align-items-center justify-content-center">
           <button *ngIf="s.estado === 'ASIGNADO'" class="btn btn-sm btn-primary" (click)="cambiarEstado(s, 'EN_RUTA')"
@@ -95,17 +109,118 @@
         <button class="btn-close" (click)="servicioMapa = undefined; puntosMapaSel = []"></button>
       </div>
     </div>
-    <!-- RF-023: paradas ordenadas con cantidades por punto -->
+    <!-- Checklist de paradas: el conductor marca llegada y registra suben/bajan reales -->
     <p-table *ngIf="servicioMapa.paradas?.length" [value]="paradasMapa"
              [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"
              [rowHover]="true" styleClass="p-datatable-sm p-datatable-striped mb-3">
       <ng-template #header>
-        <tr><th style="width:40px">#</th><th>Punto</th><th>Suben</th><th>Bajan</th></tr>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>PUNTO</th>
+          <th>PLAN <span class="text-muted fw-normal">(↑ sube · ↓ baja)</span></th>
+          <th>REAL</th>
+          <th>A BORDO</th>
+          <th>ESTADO</th>
+          <th>HORA</th>
+          <th>ACCIONES</th>
+        </tr>
       </ng-template>
       <ng-template #body let-p let-i="rowIndex">
-        <tr><td>{{ p.orden ?? i + 1 }}</td><td>{{ p.punto }}</td><td>{{ p.cantidadSube }}</td><td>{{ p.cantidadBaja }}</td></tr>
+        <tr [class.table-info]="p.estado === 'EN_PARADA'"
+            [class.table-success]="p.estado === 'REALIZADA'"
+            [class.table-secondary]="p.estado === 'OMITIDA'">
+          <td>{{ p.orden ?? i + 1 }}</td>
+          <td>
+            {{ p.punto }}
+            <div class="small text-muted" *ngIf="p.estado === 'OMITIDA' && p.motivoOmision">{{ p.motivoOmision }}</div>
+          </td>
+          <td>↑ {{ p.cantidadSube }} · ↓ {{ p.cantidadBaja }}</td>
+          <td>
+            <ng-container *ngIf="p.estado === 'REALIZADA'; else sinReal">↑ {{ p.subieronReal }} · ↓ {{ p.bajaronReal }}</ng-container>
+            <ng-template #sinReal>—</ng-template>
+          </td>
+          <td>{{ aBordoTramo(servicioMapa, i) }}</td>
+          <td><p-tag [value]="p.estado ?? 'PENDIENTE'" [severity]="severidadParada(p.estado)"></p-tag></td>
+          <td class="text-nowrap">
+            <span *ngIf="p.horaLlegada">{{ p.horaLlegada | date:'HH:mm' }}</span><span *ngIf="p.horaSalida"> → {{ p.horaSalida | date:'HH:mm' }}</span>
+          </td>
+          <td>
+            <div class="d-flex gap-1" *ngIf="servicioMapa.estado === 'EN_RUTA' && esParadaActual(servicioMapa, p)">
+              <button *ngIf="(p.estado ?? 'PENDIENTE') === 'PENDIENTE'" class="btn btn-sm btn-primary"
+                      (click)="llegarParada(servicioMapa, p)" [disabled]="marcando"
+                      pTooltip="Marcar llegada a la parada" tooltipPosition="top">
+                <i class="pi pi-map-marker"></i><span class="accion-label">Llegué</span>
+              </button>
+              <button *ngIf="p.estado === 'EN_PARADA'" class="btn btn-sm btn-success"
+                      (click)="abrirRegistroParada(servicioMapa, p)" [disabled]="marcando"
+                      pTooltip="Registrar pasajeros que suben y bajan" tooltipPosition="top">
+                <i class="pi pi-check"></i><span class="accion-label">Registrar</span>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary"
+                      (click)="omitirParada(servicioMapa, p)" [disabled]="marcando"
+                      pTooltip="Omitir esta parada" tooltipPosition="top">
+                <i class="pi pi-forward"></i><span class="accion-label">Omitir</span>
+              </button>
+            </div>
+          </td>
+        </tr>
       </ng-template>
     </p-table>
+
+    <!-- Conteos reales en la parada: prellenado con lo planeado -->
+    <div class="card border-info mb-3" *ngIf="paradaRegistrando as reg">
+      <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Parada {{ reg.parada.orden }} · {{ reg.parada.punto }}</strong>
+          <button class="btn-close" (click)="cancelarRegistroParada()"></button>
+        </div>
+        <div class="d-flex gap-3 align-items-end flex-wrap">
+          <div>
+            <label class="form-label small mb-0">Subieron</label>
+            <input type="number" min="0" class="form-control" style="width:110px" [(ngModel)]="subenReal" />
+          </div>
+          <div>
+            <label class="form-label small mb-0">Bajaron</label>
+            <input type="number" min="0" class="form-control" style="width:110px" [(ngModel)]="bajanReal" />
+          </div>
+          <div class="small text-muted">Previsto: ↑ {{ reg.parada.cantidadSube }} · ↓ {{ reg.parada.cantidadBaja }}</div>
+          <button class="btn btn-success" (click)="confirmarRegistroParada()" [disabled]="marcando">
+            <i class="pi pi-check me-1"></i> Confirmar y seguir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Parada imprevista: el conductor inserta una parada no programada en ruta -->
+    <div class="mb-3" *ngIf="servicioMapa.paradas?.length && servicioMapa.estado === 'EN_RUTA'">
+      <button class="btn btn-sm btn-outline-secondary" *ngIf="!agregandoParada" (click)="abrirParadaImprevista()">
+        <i class="pi pi-plus me-1"></i> Parada imprevista
+      </button>
+      <div class="card border-secondary" *ngIf="agregandoParada">
+        <div class="card-body py-2">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>Parada imprevista</strong>
+            <button class="btn-close" (click)="agregandoParada = false"></button>
+          </div>
+          <div class="d-flex gap-2 align-items-end flex-wrap">
+            <div>
+              <label class="form-label small mb-0">Punto</label>
+              <p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [filter]="true"
+                        [(ngModel)]="paradaNuevaPunto" placeholder="Punto de parada" appendTo="body" styleClass="w-100"></p-select>
+            </div>
+            <div>
+              <label class="form-label small mb-0">Suben</label>
+              <input type="number" min="0" class="form-control" style="width:100px" [(ngModel)]="paradaNuevaCantidad" />
+            </div>
+            <button class="btn btn-primary" (click)="guardarParadaImprevista(servicioMapa)"
+                    [disabled]="!paradaNuevaPunto || marcando">
+              <i class="pi pi-plus me-1"></i> Agregar a la ruta
+            </button>
+          </div>
+          <div class="small text-muted mt-1">Se inserta como la siguiente parada del recorrido.</div>
+        </div>
+      </div>
+    </div>
     <app-mapa [puntos]="puntosMapaSel" [origen]="origenMapa"></app-mapa>
   </div>
 </div>

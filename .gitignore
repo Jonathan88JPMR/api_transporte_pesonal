@@ -41,3 +41,8 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Archivos temporales de pruebas
+.playwright-mcp/
+ng_serve.log
+nul

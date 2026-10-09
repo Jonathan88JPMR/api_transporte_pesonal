@@ -127,8 +127,11 @@
       <td>{{ s.puntoLlegada }}</td>
       <td>{{ s.cantidad }}</td>
       <td>{{ s.motivo }}</td>
-      <td><p-tag [value]="s.esEmergencia ? 'EMERGENCIA' : 'NORMAL'" [severity]="s.esEmergencia ? 'danger' : 'secondary'"></p-tag></td>
-      <td>{{ s.placa }}</td>
+      <td>
+        <p-tag [value]="s.prioridad ?? (s.esEmergencia ? 'EMERGENCIA' : 'NORMAL')" [severity]="s.prioridad === 'EMERGENCIA' || s.esEmergencia ? 'danger' : s.prioridad === 'ALTA' ? 'warn' : 'secondary'"></p-tag>
+        <p-tag *ngIf="s.esEmergencia" value="MÉDICA" severity="danger" icon="pi pi-heart" class="ms-1"></p-tag>
+      </td>
+      <td>{{ placaTexto(s) }}</td>
       <td>
         <p-tag [value]="s.realizado ? 'SI' : 'NO'" [severity]="s.realizado ? 'success' : 'danger'"></p-tag>
       </td>

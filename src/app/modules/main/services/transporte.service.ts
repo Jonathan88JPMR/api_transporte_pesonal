@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@/environments/environment';
 import { lastValueFrom } from 'rxjs';
-import { AsignacionUnidad, Auditoria, IndicadoresReporte, Motivo, Parada, Punto, Solicitud, Traslado, Unidad } from '@/app/models/transporte.models';
+import { AsignacionUnidad, Auditoria, IndicadoresReporte, Motivo, Parada, ParadaDetalle, PosicionGeo, ProgresoTraslado, Punto, Solicitud, Traslado, Unidad } from '@/app/models/transporte.models';
 import { DexieService } from '@/app/shared/dixiedb/dexie-db.service';
 
 @Injectable({
@@ -18,7 +18,7 @@ export class TransporteService {
 
   // ============ Solicitudes ============
 
-  listarSolicitudes(filtro: { fecha?: string; estado?: string } = {}): Promise<Solicitud[]> {
+  listarSolicitudes(filtro: { fecha?: string; estado?: string; usuario?: string } = {}): Promise<Solicitud[]> {
     return this.consultar<Solicitud[]>('solicitudes/listar', filtro).then(r => this.unwrap(r));
   }
 
@@ -44,6 +44,10 @@ export class TransporteService {
     return this.mutar<Solicitud[]>('solicitudes/asignar', { idSolicitud, placa }).then(r => this.unwrap(r));
   }
 
+  desasignarUnidad(idSolicitud: number): Promise<Solicitud[]> {
+    return this.mutar<Solicitud[]>('solicitudes/desasignar', { idSolicitud }).then(r => this.unwrap(r));
+  }
+
   unirSolicitudes(ids: number[], placa: string): Promise<Traslado[]> {
     return this.mutar<Traslado[]>('traslados/unir', { ids, placa }).then(r => this.unwrap(r));
   }
@@ -60,6 +64,62 @@ export class TransporteService {
     return this.mutar<Parada[]>('traslados/paradas', { idTraslado, paradas, usuario }).then(r => this.unwrap(r));
   }
 
+  // ============ Seguimiento de paradas ============
+  // horaCliente conserva el timestamp real del evento: si el dispositivo está
+  // offline, la mutación se encola y se sincroniza después con su hora original.
+
+  llegadaParada(idParada: number, geo?: PosicionGeo): Promise<Parada[]> {
+    return this.mutar<Parada[]>('paradas/llegada', {
+      idParada, horaCliente: new Date().toISOString(),
+      latitud: geo?.latitud, longitud: geo?.longitud
+    }).then(r => this.unwrap(r));
+  }
+
+  registrarParada(idParada: number, subieronReal: number, bajaronReal: number,
+                  detalle?: ParadaDetalle[], geo?: PosicionGeo): Promise<Parada[]> {
+    return this.mutar<Parada[]>('paradas/registrar', {
+      idParada, subieronReal, bajaronReal, detalle,
+      horaCliente: new Date().toISOString(),
+      latitud: geo?.latitud, longitud: geo?.longitud
+    }).then(r => this.unwrap(r));
+  }
+
+  omitirParada(idParada: number, motivo: string): Promise<Parada[]> {
+    return this.mutar<Parada[]>('paradas/omitir', {
+      idParada, motivo, horaCliente: new Date().toISOString()
+    }).then(r => this.unwrap(r));
+  }
+
+  // Parada no programada que el conductor inserta en ruta (p. ej. desvío).
+  // Se agrega como la siguiente parada pendiente del recorrido.
+  agregarParadaImprevista(idTraslado: number | null, idSolicitud: number | null,
+                        punto: string, cantidadSube: number, geo?: PosicionGeo): Promise<Parada[]> {
+    return this.mutar<Parada[]>('paradas/imprevista', {
+      idTraslado, idSolicitud, punto, cantidadSube,
+      horaCliente: new Date().toISOString(),
+      latitud: geo?.latitud, longitud: geo?.longitud
+    }).then(r => this.unwrap(r));
+  }
+
+  // Consulta liviana para refrescar el progreso sin recargar todo el traslado
+  progresoTraslado(idTraslado: number): Promise<ProgresoTraslado | undefined> {
+    return this.consultar<ProgresoTraslado[]>('traslados/progreso', { idTraslado })
+      .then(r => this.unwrap(r)[0]);
+  }
+
+  // Ping GPS de la unidad en ruta. Va directo (sin cola offline ni
+  // idOperacion): una posición vieja encolada no aporta, solo la última sirve.
+  reportarUbicacion(idTraslado: number, placa: string, geo: PosicionGeo): void {
+    if (!navigator.onLine || geo.latitud == null || geo.longitud == null) return;
+    let usuario: string | undefined;
+    try { usuario = JSON.parse(localStorage.getItem('usuario') ?? '{}').usuario; } catch { }
+    this.post('unidades/ubicacion', {
+      idTraslado, placa, usuario,
+      latitud: geo.latitud, longitud: geo.longitud, precision: geo.precision,
+      fechaHoraCliente: new Date().toISOString()
+    }).catch(() => { });
+  }
+
   acoplarSolicitud(idSolicitud: number, idTraslado: number, usuario?: string): Promise<Solicitud[]> {
     return this.mutar<Solicitud[]>('traslados/acoplar', { idSolicitud, idTraslado, usuario }).then(r => this.unwrap(r));
   }
@@ -74,8 +134,21 @@ export class TransporteService {
     return this.consultar<Solicitud[]>('conductor/servicios', { placa, fecha }).then(r => this.unwrap(r));
   }
 
-  agregarPasajeros(idSolicitud: number, cantidad: number, idSolicitudUnidad?: number | null): Promise<Solicitud[]> {
-    return this.mutar<Solicitud[]>('conductor/agregar-pasajeros', { idSolicitud, idSolicitudUnidad, cantidad }).then(r => this.unwrap(r));
+  // Servicios activos de cada unidad (las asignaciones múltiples llegan como
+  // porciones con idSolicitudUnidad). Fuente real de la ocupación por placa.
+  serviciosPorPlacas(placas: string[]): Promise<{ placa: string; servicios: Solicitud[] }[]> {
+    return Promise.all(placas.map(async placa => {
+      try {
+        return { placa, servicios: await this.serviciosConductor(placa) };
+      } catch {
+        return { placa, servicios: [] as Solicitud[] };
+      }
+    }));
+  }
+
+  // idParada: si el extra sube en una parada concreta, queda registrado ahí
+  agregarPasajeros(idSolicitud: number, cantidad: number, idSolicitudUnidad?: number | null, idParada?: number | null): Promise<Solicitud[]> {
+    return this.mutar<Solicitud[]>('conductor/agregar-pasajeros', { idSolicitud, idSolicitudUnidad, cantidad, idParada }).then(r => this.unwrap(r));
   }
 
   // ============ Catálogos ============
@@ -106,7 +179,7 @@ export class TransporteService {
     return this.post<Auditoria[]>('reportes/auditoria', {}).then(r => this.unwrap(r));
   }
 
-  administrarCatalogo(entidad: 'USUARIO' | 'UNIDAD' | 'PUNTO' | 'MOTIVO', accion: 'LISTAR' | 'GUARDAR' | 'ELIMINAR', datos: any = {}): Promise<any[]> {
+  administrarCatalogo(entidad: 'USUARIO' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA', accion: 'LISTAR' | 'GUARDAR' | 'ELIMINAR', datos: any = {}): Promise<any[]> {
     return this.mutar<any[]>('administracion/catalogo', { entidad, accion, ...datos }).then(r => this.unwrap(r));
   }
 
@@ -133,8 +206,14 @@ export class TransporteService {
         if (operacion.id) await this.dexie.eliminarOperacion(operacion.id);
         sincronizadas++;
       } catch {
-        await this.dexie.incrementarIntento(operacion);
-        break;
+        // Operación "envenenada" (error de validación, etc.): tras N intentos
+        // se descarta para no bloquear el resto de la cola.
+        if ((operacion.intentos ?? 0) + 1 >= 5 && operacion.id) {
+          await this.dexie.eliminarOperacion(operacion.id);
+        } else {
+          await this.dexie.incrementarIntento(operacion);
+          break;
+        }
       }
     }
     return sincronizadas;
