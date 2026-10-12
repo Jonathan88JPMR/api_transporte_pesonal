@@ -107,12 +107,32 @@ export class ConductorComponent implements OnInit, OnDestroy {
   }
 
   async cambiarEstado(s: Solicitud, estado: 'ASIGNADO' | 'EN_RUTA' | 'REALIZADO') {
+    // Aviso preventivo: no se puede finalizar con paradas sin procesar
+    if (estado === 'REALIZADO') {
+      const pendientes = this.paradasPendientes(s);
+      if (pendientes.length) {
+        const nombres = pendientes.map(p => `${p.orden}. ${p.punto}`).join(', ');
+        this.alertService.showAlert('warning',
+          `${pendientes.length === 1 ? 'Falta' : 'Faltan'} ${pendientes.length} parada${pendientes.length > 1 ? 's' : ''} por procesar: ${nombres}. Registre u omita cada una desde "Mapa" antes de finalizar.`,
+          'Servicio incompleto');
+        return;
+      }
+    }
     try {
       await this.transporteService.cambiarEstado(s.idSolicitud, estado, s.idSolicitudUnidad, this.usuario?.usuario);
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo actualizar el servicio', 'Error');
+    } catch (e) {
+      const err = e as { status?: number };
+      const esValidacion = err?.status === 400;
+      this.alertService.showAlert(esValidacion ? 'warning' : 'error',
+        this.mensajeError(e, 'No se pudo actualizar el servicio'),
+        esValidacion ? 'Aviso' : 'Error');
     }
+  }
+
+  // Paradas aún sin procesar en el servicio (PENDIENTE o EN_PARADA)
+  paradasPendientes(s: Solicitud): Parada[] {
+    return this.paradasOrdenadas(s).filter(p => (p.estado ?? 'PENDIENTE') === 'PENDIENTE' || p.estado === 'EN_PARADA');
   }
 
   obtenerUbicacion() {
@@ -212,8 +232,8 @@ export class ConductorComponent implements OnInit, OnDestroy {
       if (this.servicioMapa?.idSolicitud === s.idSolicitud) {
         this.servicioMapa = this.servicios.find(x => x.idSolicitud === s.idSolicitud);
       }
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo marcar la llegada a la parada', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo marcar la llegada a la parada'), 'Error');
     } finally {
       this.marcando = false;
     }
@@ -244,8 +264,8 @@ export class ConductorComponent implements OnInit, OnDestroy {
       if (this.servicioMapa?.idSolicitud === ctx.servicio.idSolicitud) {
         this.servicioMapa = this.servicios.find(x => x.idSolicitud === ctx.servicio.idSolicitud);
       }
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo registrar la parada', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo registrar la parada'), 'Error');
     } finally {
       this.marcando = false;
     }
@@ -272,8 +292,8 @@ export class ConductorComponent implements OnInit, OnDestroy {
       if (this.servicioMapa?.idSolicitud === s.idSolicitud) {
         this.servicioMapa = this.servicios.find(x => x.idSolicitud === s.idSolicitud);
       }
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo agregar la parada', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo agregar la parada'), 'Error');
     } finally {
       this.marcando = false;
     }
@@ -296,8 +316,8 @@ export class ConductorComponent implements OnInit, OnDestroy {
       if (this.servicioMapa?.idSolicitud === s.idSolicitud) {
         this.servicioMapa = this.servicios.find(x => x.idSolicitud === s.idSolicitud);
       }
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo omitir la parada', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo omitir la parada'), 'Error');
     } finally {
       this.marcando = false;
     }
@@ -348,8 +368,8 @@ export class ConductorComponent implements OnInit, OnDestroy {
         s.idSolicitud, this.pasajerosExtra, s.idSolicitudUnidad, this.paradaActual(s)?.idParada ?? null);
       this.servicioPasajeros = undefined;
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No hay cupo suficiente en la unidad', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No hay cupo suficiente en la unidad'), 'Error');
     }
   }
 
@@ -405,5 +425,11 @@ export class ConductorComponent implements OnInit, OnDestroy {
       rutas.push(puntos.join(' > '));
     }
     return rutas.join('  ·  ');
+  }
+
+  // Mensaje real del servidor (RAISERROR de validación) si existe
+  private mensajeError(e: unknown, fallback: string): string {
+    const err = e as { error?: { mensaje?: string } };
+    return err?.error?.mensaje || fallback;
   }
 }

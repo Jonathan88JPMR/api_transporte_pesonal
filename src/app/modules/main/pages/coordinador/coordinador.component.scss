@@ -20,6 +20,21 @@ tr.fila-emergencia {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 10px;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+
+.traslado-destacado {
+  border-color: #238664;
+  box-shadow: 0 0 0 2px rgba(35, 134, 100, 0.35);
+}
+
+.traslado-finalizado {
+  background-color: #f8f9fa;
+  border-style: dashed;
+}
+
+.tag-link {
+  cursor: pointer;
 }
 
 .ruta {

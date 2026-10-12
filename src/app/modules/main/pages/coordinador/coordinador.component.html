@@ -104,11 +104,15 @@
                 <ng-container *ngIf="s.placa !== 'MULTIPLE'">{{ s.placa }}</ng-container>
               </td>
               <td>
-                <p-tag *ngIf="s.idTraslado" [value]="'T-' + s.idTraslado" severity="info"></p-tag>
+                <p-tag *ngIf="s.idTraslado" [value]="'T-' + s.idTraslado" severity="info" class="tag-link"
+                       (click)="verTraslado(s)"
+                       [pTooltip]="esTrasladoActivo(s.idTraslado) ? 'Ver en Traslados activos' : 'Ver resumen del traslado'"
+                       tooltipPosition="top"></p-tag>
                 <ng-container *ngIf="!s.idTraslado && s.placa === 'MULTIPLE'">
-                  <p-tag *ngFor="let u of unidadesDe(s)" severity="info" class="me-1"
+                  <p-tag *ngFor="let u of unidadesDe(s)" severity="info" class="me-1" [class.tag-link]="!!u.idTraslado"
                          [value]="u.idTraslado ? 'T-' + u.idTraslado : u.placa"
-                         [pTooltip]="u.placa + ' · ' + u.cantidad + ' pers. · ' + u.estado"
+                         (click)="verTraslado(u)"
+                         [pTooltip]="u.placa + ' · ' + u.cantidad + ' pers. · ' + u.estado + (u.idTraslado ? ' — click para ver el traslado' : '')"
                          tooltipPosition="top"></p-tag>
                 </ng-container>
               </td>
@@ -161,35 +165,13 @@
       <div class="card-body">
         <h6>Traslados activos</h6>
         <div *ngIf="traslados.length === 0" class="text-muted small">No hay traslados</div>
-        <div *ngFor="let t of trasladosPagina()" class="traslado-card mb-2">
-          <div class="d-flex justify-content-between align-items-center">
-            <strong>T-{{ t.idTraslado }} · {{ t.placa }}</strong>
-            <div class="d-flex gap-1">
-              <!-- RF-020: ocupación del traslado con color -->
-              <p-tag [value]="ocupacionTraslado(t) + '/' + capacidadDe(t.placa)" [severity]="severidadCupo(ocupacionTraslado(t), capacidadDe(t.placa))"></p-tag>
-              <p-tag [value]="t.estado" [severity]="t.estado === 'PENDIENTE' ? 'warn' : 'success'"></p-tag>
-            </div>
-          </div>
-          <div class="ruta small mt-1" *ngIf="t.ruta">
-            <i class="pi pi-map-marker me-1"></i>{{ t.ruta }}
-          </div>
-          <div class="small mt-1" *ngIf="t.paradas?.length">
-            <i class="pi pi-flag me-1"></i>{{ resumenParadas(t) }}
-          </div>
-          <div class="small mt-1 text-muted" *ngIf="t.ultimaUbicacionAt">
-            <i class="pi pi-compass me-1"></i>GPS {{ horaGps(t.ultimaUbicacionAt) }}
-          </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-link px-0" (click)="editarRuta(t)"><i class="pi pi-map me-1"></i>Editar paradas</button>
-            <button class="btn btn-sm btn-link px-0" *ngIf="t.paradas?.length" (click)="verProgreso(t)"><i class="pi pi-chart-line me-1"></i>Progreso</button>
-            <button class="btn btn-sm btn-link px-0" (click)="verMapa(t)"><i class="pi pi-map-marker me-1"></i>Mapa</button>
-            <button class="btn btn-sm btn-link px-0" (click)="verRutaMapa(t)"><i class="pi pi-globe me-1"></i>OSM</button>
-          </div>
-          <ul class="small mb-0 mt-1 ps-3" *ngIf="t.solicitudes?.length">
-            <li *ngFor="let s of t.solicitudes" [class.text-decoration-line-through]="s.estado === 'ANULADO'">
-              {{ s.puntoPartida }} → {{ s.puntoLlegada }} ({{ s.cantidad }} pers.)
-            </li>
-          </ul>
+        <div *ngIf="traslados.length && !trasladosActivos.length" class="text-muted small">
+          Todos los traslados del día están finalizados
+        </div>
+        <div *ngFor="let t of trasladosPagina()" class="traslado-card mb-2"
+             [id]="'traslado-' + t.idTraslado"
+             [class.traslado-destacado]="t.idTraslado === trasladoDestacado">
+          <ng-container *ngTemplateOutlet="tarjetaTraslado; context: { $implicit: t }"></ng-container>
         </div>
         <div class="d-flex justify-content-between align-items-center mt-2" *ngIf="paginasTraslados > 1">
           <button class="btn btn-sm btn-outline-secondary" (click)="irPaginaTraslados(-1)" [disabled]="paginaTraslados === 0">
@@ -200,10 +182,68 @@
             <i class="pi pi-chevron-right"></i>
           </button>
         </div>
+        <!-- Traslados finalizados del día: mismas tarjetas pero solo consulta -->
+        <button class="btn btn-sm btn-link px-0 mt-2" *ngIf="trasladosFinalizados.length"
+                (click)="mostrarFinalizados = !mostrarFinalizados">
+          <i class="pi me-1" [class.pi-chevron-down]="mostrarFinalizados" [class.pi-chevron-right]="!mostrarFinalizados"></i>
+          Finalizados ({{ trasladosFinalizados.length }})
+        </button>
+        <ng-container *ngIf="mostrarFinalizados">
+          <div *ngFor="let t of finalizadosPagina()" class="traslado-card traslado-finalizado mb-2"
+               [id]="'traslado-' + t.idTraslado"
+               [class.traslado-destacado]="t.idTraslado === trasladoDestacado">
+            <ng-container *ngTemplateOutlet="tarjetaTraslado; context: { $implicit: t }"></ng-container>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-2" *ngIf="paginasFinalizados > 1">
+            <button class="btn btn-sm btn-outline-secondary" (click)="irPaginaFinalizados(-1)" [disabled]="paginaFinalizados === 0">
+              <i class="pi pi-chevron-left"></i>
+            </button>
+            <span class="small text-muted">{{ paginaFinalizados + 1 }} / {{ paginasFinalizados }}</span>
+            <button class="btn btn-sm btn-outline-secondary" (click)="irPaginaFinalizados(1)" [disabled]="paginaFinalizados >= paginasFinalizados - 1">
+              <i class="pi pi-chevron-right"></i>
+            </button>
+          </div>
+        </ng-container>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Contenido compartido de la tarjeta de traslado (activos y finalizados) -->
+<ng-template #tarjetaTraslado let-t>
+  <div class="d-flex justify-content-between align-items-center">
+    <strong>T-{{ t.idTraslado }} · {{ t.placa }}</strong>
+    <div class="d-flex gap-1">
+      <!-- RF-020: ocupación del traslado con color -->
+      <p-tag [value]="ocupacionTraslado(t) + '/' + capacidadDe(t.placa)" [severity]="severidadCupo(ocupacionTraslado(t), capacidadDe(t.placa))"></p-tag>
+      <p-tag [value]="t.estado" [severity]="severidadTraslado(t)"></p-tag>
+    </div>
+  </div>
+  <div class="ruta small mt-1" *ngIf="t.ruta">
+    <i class="pi pi-map-marker me-1"></i>{{ t.ruta }}
+  </div>
+  <div class="small mt-1" *ngIf="t.paradas?.length">
+    <i class="pi pi-flag me-1"></i>{{ resumenParadas(t) }}
+  </div>
+  <div class="small mt-1 text-muted" *ngIf="t.ultimaUbicacionAt">
+    <i class="pi pi-compass me-1"></i>GPS {{ horaGps(t.ultimaUbicacionAt) }}
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-sm btn-link px-0" (click)="editarRuta(t)">
+      <i class="pi pi-map me-1"></i>{{ rutaBloqueadaPara(t) ? 'Ver ruta' : 'Editar paradas' }}
+    </button>
+    <button class="btn btn-sm btn-link px-0" *ngIf="t.paradas?.length" (click)="verProgreso(t)"><i class="pi pi-chart-line me-1"></i>Progreso</button>
+    <button class="btn btn-sm btn-link px-0" (click)="verMapa(t)"><i class="pi pi-map-marker me-1"></i>Mapa</button>
+    <button class="btn btn-sm btn-link px-0" (click)="verRutaMapa(t)"><i class="pi pi-globe me-1"></i>OSM</button>
+  </div>
+  <ul class="small mb-0 mt-1 ps-3" *ngIf="t.solicitudes?.length">
+    <li *ngFor="let s of t.solicitudes" [class.text-decoration-line-through]="s.estado === 'ANULADO'">
+      {{ s.puntoPartida }} → {{ s.puntoLlegada }} ({{ s.cantidad }} pers.)
+      <i *ngIf="s.estado === 'REALIZADO'" class="pi pi-check-circle text-success ms-1"
+         pTooltip="Solicitud finalizada" tooltipPosition="top"></i>
+    </li>
+  </ul>
+</ng-template>
 
 <!-- Mapa del traslado -->
 <p-dialog [(visible)]="mapaAbierto" [modal]="true" [draggable]="false" [resizable]="false"
@@ -274,33 +314,69 @@
         <tr><td colspan="9" class="text-center text-muted">Este traslado no tiene paradas definidas</td></tr>
       </ng-template>
     </p-table>
-    <div class="small text-muted mt-2"><i class="pi pi-sync me-1"></i>Se actualiza automáticamente cada 30 segundos</div>
+    <div class="d-flex justify-content-between align-items-center mt-2">
+      <div class="small text-muted"><i class="pi pi-sync me-1"></i>Se actualiza automáticamente cada 30 segundos</div>
+      <div class="d-flex gap-2" *ngIf="trasladoProgreso">
+        <button class="btn btn-sm btn-outline-info" (click)="verMapa(trasladoProgreso!)" pTooltip="Ver mapa con la ruta y la unidad" tooltipPosition="top">
+          <i class="pi pi-map-marker me-1"></i>Mapa
+        </button>
+        <button class="btn btn-sm btn-outline-info" (click)="verRutaMapa(trasladoProgreso!)" pTooltip="Abrir ruta en OpenStreetMap" tooltipPosition="top">
+          <i class="pi pi-globe me-1"></i>OSM
+        </button>
+      </div>
+    </div>
 </p-dialog>
 
 <!-- Editor de ruta: paradas ordenadas del traslado -->
 <p-dialog [(visible)]="editorAbierto" [modal]="true" [draggable]="false" [resizable]="false"
           [style]="{ width: '860px', 'max-width': '95vw' }"
           [header]="'Ruta T-' + trasladoEditando?.idTraslado">
-    <div class="d-flex justify-content-end mb-2">
+    <!-- Ruta en ejecución: solo lectura, el ajuste lo hace el conductor en ruta -->
+    <div class="alert alert-warning small py-2 mb-2" *ngIf="rutaBloqueada()">
+      <i class="pi pi-lock me-1"></i>
+      <strong>Ruta en ejecución — solo lectura.</strong>
+      Para agregar una bajada o parada extra, el conductor usa <em>"Parada imprevista"</em> en su app y registra los conteos reales ahí.
+    </div>
+    <!-- Guía de uso cuando la ruta aún es editable -->
+    <div class="alert alert-secondary small py-2 mb-2" *ngIf="!rutaBloqueada()">
+      <i class="pi pi-info-circle me-1"></i>
+      Cada fila es una parada <strong>en orden de recorrido</strong>: <strong>↑ suben</strong> pasajeros que abordan ahí,
+      <strong>↓ bajan</strong> los que descienden. Si alguien baja antes del destino, agregue la parada intermedia;
+      el descenso del destino se <strong>reajusta solo</strong> (ej. 10 suben → escribe 2 aquí y Acopio queda en 8).
+    </div>
+    <div class="d-flex justify-content-between align-items-center mb-2" *ngIf="!rutaBloqueada()">
+      <span class="small" [class.text-danger]="balanceRuta() !== 0" [class.text-muted]="balanceRuta() === 0">
+        Total: ↑ {{ totalSuben() }} suben · ↓ {{ totalBajan() }} bajan
+        <ng-container *ngIf="balanceRuta() > 0"> — faltan {{ balanceRuta() }} descenso(s) por asignar</ng-container>
+        <ng-container *ngIf="balanceRuta() < 0"> — bajan {{ -balanceRuta() }} más de los que suben</ng-container>
+      </span>
       <button class="btn btn-outline-secondary btn-sm" (click)="generarRutaSugerida()"
               pTooltip="Generar paradas desde las solicitudes del traslado (fusiona puntos repetidos)" tooltipPosition="top">
         <i class="pi pi-bolt me-1"></i>Ruta sugerida
       </button>
     </div>
+    <div class="row g-2 mb-1 fw-semibold small text-muted" *ngIf="paradasEditando.length">
+      <div class="col-md-5">Punto de parada</div>
+      <div class="col-md-2">↑ Suben</div>
+      <div class="col-md-2">↓ Bajan</div>
+      <div class="col-md-3">Orden</div>
+    </div>
     <div class="row g-2 mb-2" *ngFor="let p of paradasEditando; let i = index">
-      <div class="col-md-5"><p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="p.punto" placeholder="Punto de parada" [filter]="true" appendTo="body" styleClass="w-100"></p-select></div>
-      <div class="col-md-2"><input type="number" min="0" class="form-control" [(ngModel)]="p.cantidadSube" placeholder="Suben" /></div>
-      <div class="col-md-2"><input type="number" min="0" class="form-control" [(ngModel)]="p.cantidadBaja" placeholder="Bajan" /></div>
+      <div class="col-md-5"><p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="p.punto" placeholder="Punto de parada" [filter]="true" appendTo="body" styleClass="w-100" [disabled]="rutaBloqueada()"></p-select></div>
+      <div class="col-md-2"><input type="number" min="0" class="form-control" [(ngModel)]="p.cantidadSube" (ngModelChange)="alCambiarBaja(i)" placeholder="Suben" [disabled]="rutaBloqueada()" /></div>
+      <div class="col-md-2"><input type="number" min="0" class="form-control" [(ngModel)]="p.cantidadBaja" (ngModelChange)="alCambiarBaja(i)" placeholder="Bajan" [disabled]="rutaBloqueada()" /></div>
       <div class="col-md-3">
         <div class="d-flex gap-1">
-          <button class="btn btn-outline-secondary" (click)="moverParada(i, -1)" [disabled]="i === 0" title="Subir"><i class="pi pi-arrow-up"></i></button>
-          <button class="btn btn-outline-secondary" (click)="moverParada(i, 1)" [disabled]="i === paradasEditando.length - 1" title="Bajar"><i class="pi pi-arrow-down"></i></button>
-          <button class="btn btn-outline-danger" (click)="quitarParada(i)" title="Quitar"><i class="pi pi-trash"></i></button>
+          <button class="btn btn-outline-secondary" (click)="moverParada(i, -1)" [disabled]="rutaBloqueada() || i === 0" title="Subir"><i class="pi pi-arrow-up"></i></button>
+          <button class="btn btn-outline-secondary" (click)="moverParada(i, 1)" [disabled]="rutaBloqueada() || i === paradasEditando.length - 1" title="Bajar"><i class="pi pi-arrow-down"></i></button>
+          <button class="btn btn-outline-danger" (click)="quitarParada(i)" [disabled]="rutaBloqueada()" title="Quitar"><i class="pi pi-trash"></i></button>
         </div>
       </div>
     </div>
-    <button class="btn btn-outline-secondary me-2" (click)="agregarParada()">Agregar parada</button>
-    <button class="btn btn-primary" (click)="guardarRuta()">Guardar ruta</button>
+    <ng-container *ngIf="!rutaBloqueada()">
+      <button class="btn btn-outline-secondary me-2" (click)="agregarParada()">Agregar parada</button>
+      <button class="btn btn-primary" (click)="guardarRuta()">Guardar ruta</button>
+    </ng-container>
 </p-dialog>
 
 <p-dialog [(visible)]="mostrarMultiple" [modal]="true" [style]="{ width: '560px' }"

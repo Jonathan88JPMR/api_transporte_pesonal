@@ -39,13 +39,82 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
   paginaTraslados = 0;
   readonly trasladosPorPagina = 5;
 
+  // El panel muestra solo traslados realmente activos; los REALIZADO
+  // ya no requieren acción del coordinador y confundían la vista
+  get trasladosActivos(): Traslado[] {
+    return this.traslados.filter(t => t.estado !== 'REALIZADO');
+  }
+
+  // Sección colapsable: traslados finalizados del día — solo consulta
+  // (progreso, mapa, OSM, ruta en solo lectura), no gestión
+  mostrarFinalizados = false;
+  paginaFinalizados = 0;
+  get trasladosFinalizados(): Traslado[] {
+    return this.traslados.filter(t => t.estado === 'REALIZADO');
+  }
+
+  get paginasFinalizados(): number {
+    return Math.max(1, Math.ceil(this.trasladosFinalizados.length / this.trasladosPorPagina));
+  }
+
+  finalizadosPagina(): Traslado[] {
+    const ini = this.paginaFinalizados * this.trasladosPorPagina;
+    return this.trasladosFinalizados.slice(ini, ini + this.trasladosPorPagina);
+  }
+
+  irPaginaFinalizados(delta: number) {
+    this.paginaFinalizados = Math.min(Math.max(0, this.paginaFinalizados + delta), this.paginasFinalizados - 1);
+  }
+
   get paginasTraslados(): number {
-    return Math.max(1, Math.ceil(this.traslados.length / this.trasladosPorPagina));
+    return Math.max(1, Math.ceil(this.trasladosActivos.length / this.trasladosPorPagina));
   }
 
   trasladosPagina(): Traslado[] {
     const ini = this.paginaTraslados * this.trasladosPorPagina;
-    return this.traslados.slice(ini, ini + this.trasladosPorPagina);
+    return this.trasladosActivos.slice(ini, ini + this.trasladosPorPagina);
+  }
+
+  // Click en el tag T-xx de la tabla: lleva la página del panel a ese
+  // traslado y lo resalta para enlazar visualmente solicitud ↔ traslado.
+  // Si ya finalizó, expande la sección de finalizados y resalta su tarjeta
+  trasladoDestacado?: number;
+  verTraslado(item: { idTraslado?: number | null }) {
+    if (!item.idTraslado) return;
+    const idx = this.trasladosActivos.findIndex(t => t.idTraslado === item.idTraslado);
+    if (idx >= 0) {
+      this.trasladoDestacado = item.idTraslado;
+      this.paginaTraslados = Math.floor(idx / this.trasladosPorPagina);
+      setTimeout(() => document.getElementById(`traslado-${item.idTraslado}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+      return;
+    }
+    // Finalizado del día: expandir la sección, ir a su página y resaltar
+    // la tarjeta — desde ahí el usuario elige Progreso / Mapa / OSM / Ver ruta
+    const idxF = this.trasladosFinalizados.findIndex(t => t.idTraslado === item.idTraslado);
+    if (idxF >= 0) {
+      this.trasladoDestacado = item.idTraslado;
+      this.mostrarFinalizados = true;
+      this.paginaFinalizados = Math.floor(idxF / this.trasladosPorPagina);
+      setTimeout(() => document.getElementById(`traslado-${item.idTraslado}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+      return;
+    }
+    // Fuera del filtro del día: progreso por ID (Mapa/OSM dentro del modal)
+    this.verProgreso({ idTraslado: item.idTraslado } as Traslado);
+  }
+
+  esTrasladoActivo(idTraslado?: number | null): boolean {
+    return this.trasladosActivos.some(t => t.idTraslado === idTraslado);
+  }
+
+  severidadTraslado(t: Traslado): 'warn' | 'info' | 'success' | 'secondary' {
+    switch (t.estado) {
+      case 'PENDIENTE': return 'warn';
+      case 'EN_RUTA': return 'info';
+      case 'REALIZADO': return 'success';
+      default: return 'secondary';
+    }
   }
 
   irPaginaTraslados(delta: number) {
@@ -110,6 +179,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
       ]);
       this.seleccionadas = [];
       this.paginaTraslados = 0;
+      this.paginaFinalizados = 0;
       this.anuladasCargadas = false; // el tab Anuladas se recarga al abrirse
       void this.cargarPorciones();
     } catch {
@@ -337,8 +407,8 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     try {
       await this.transporteService.asignarUnidad(s.idSolicitud, placa);
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo asignar la unidad', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo asignar la unidad'), 'Error');
     }
   }
 
@@ -352,8 +422,8 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     try {
       await this.transporteService.asignarUnidad(s.idSolicitud, candidata.placa);
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo asignar la unidad', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo asignar la unidad'), 'Error');
     }
   }
 
@@ -365,8 +435,8 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     try {
       await this.transporteService.desasignarUnidad(s.idSolicitud);
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo desasignar la unidad', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo desasignar la unidad'), 'Error');
     }
   }
 
@@ -415,8 +485,8 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     try {
       await this.transporteService.eliminarSolicitud(s.idSolicitud);
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo anular la solicitud', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo anular la solicitud'), 'Error');
     }
   }
 
@@ -456,8 +526,8 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
       await this.transporteService.unirSolicitudes(ids, this.placaUnir);
       this.placaUnir = undefined;
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No se pudieron unir las solicitudes', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudieron unir las solicitudes'), 'Error');
     }
   }
 
@@ -470,8 +540,8 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     try {
       await this.transporteService.separarSolicitud(s.idSolicitud);
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo separar la solicitud', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo separar la solicitud'), 'Error');
     }
   }
 
@@ -577,6 +647,44 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     window.open(url, '_blank');
   }
 
+  // La ruta queda bloqueada cuando ya inició su ejecución (alguna parada
+  // marcada por el conductor) o el traslado ya terminó. El backend también
+  // lo valida; aquí solo evitamos que el usuario edite algo que no podrá guardar.
+  rutaBloqueada(): boolean {
+    const t = this.trasladoEditando;
+    return t ? this.rutaBloqueadaPara(t) : false;
+  }
+
+  rutaBloqueadaPara(t: Traslado): boolean {
+    if (t.estado === 'REALIZADO') return true;
+    return (t.paradas ?? []).some(p => (p.estado ?? 'PENDIENTE') !== 'PENDIENTE');
+  }
+
+  // Balance planeado: los que suben en toda la ruta deben ser los que bajan
+  totalSuben(): number {
+    return this.paradasEditando.reduce((a, p) => a + (p.cantidadSube ?? 0), 0);
+  }
+
+  totalBajan(): number {
+    return this.paradasEditando.reduce((a, p) => a + (p.cantidadBaja ?? 0), 0);
+  }
+
+  // >0: quedan pasajeros sin punto de bajada | <0: bajan más de los que suben
+  balanceRuta(): number {
+    return this.totalSuben() - this.totalBajan();
+  }
+
+  // Auto-reparto de descensos: al editar "bajan" de una parada intermedia,
+  // la última parada absorbe la diferencia (10 suben − 2 aquí = 8 en destino).
+  // Si se repartió de más, la última queda en 0 y el balance lo marca en rojo.
+  alCambiarBaja(indice: number) {
+    const ultima = this.paradasEditando.length - 1;
+    if (indice >= ultima) return;
+    const bajanAntes = this.paradasEditando.slice(0, ultima)
+      .reduce((a, p) => a + (p.cantidadBaja ?? 0), 0);
+    this.paradasEditando[ultima].cantidadBaja = Math.max(0, this.totalSuben() - bajanAntes);
+  }
+
   async guardarRuta() {
     if (!this.trasladoEditando || this.paradasEditando.some(p => !p.punto)) return;
     try {
@@ -589,8 +697,8 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
       await this.transporteService.guardarParadas(this.trasladoEditando.idTraslado, paradas);
       this.trasladoEditando = undefined;
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'No se pudo guardar la ruta', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo guardar la ruta'), 'Error');
     }
   }
 
@@ -691,6 +799,19 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     if (id == null) return;
     try {
       this.progreso = await this.transporteService.progresoTraslado(id);
+      // Si se abrió con un stub (traslado fuera del filtro del día),
+      // completar placa/estado/paradas con lo que devuelve el endpoint
+      if (this.progreso && this.trasladoProgreso && !this.trasladoProgreso.placa) {
+        this.trasladoProgreso = {
+          ...this.trasladoProgreso,
+          placa: this.progreso.placa,
+          estado: this.progreso.estadoTraslado as Traslado['estado'],
+          paradas: this.progreso.paradas,
+          ultimaLatitud: this.progreso.ultimaLatitud,
+          ultimaLongitud: this.progreso.ultimaLongitud,
+          ultimaUbicacionAt: this.progreso.ultimaUbicacionAt,
+        };
+      }
     } catch {
       try {
         this.traslados = await this.transporteService.listarTraslados(this.fechaFiltro ? { fecha: this.fechaFiltro } : {});
@@ -768,12 +889,18 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
       await this.transporteService.asignarMultiplesUnidades(this.solicitudMultiple.idSolicitud, this.asignaciones);
       this.cerrarMultiple();
       await this.cargar();
-    } catch {
-      this.alertService.showAlert('error', 'La distribución no coincide con la cantidad o capacidad disponible', 'Error');
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'La distribución no coincide con la cantidad o capacidad disponible'), 'Error');
     }
   }
 
   esSeleccionable(s: Solicitud): boolean {
     return s.estado === 'PENDIENTE' && !s.realizado;
+  }
+
+  // Mensaje real del servidor (RAISERROR de validación) si existe
+  private mensajeError(e: unknown, fallback: string): string {
+    const err = e as { error?: { mensaje?: string } };
+    return err?.error?.mensaje || fallback;
   }
 }
