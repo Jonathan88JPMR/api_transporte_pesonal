@@ -69,13 +69,13 @@
                   [class.btn-success]="paradasPendientes(s).length === 0"
                   [class.btn-outline-warning]="paradasPendientes(s).length > 0"
                   (click)="cambiarEstado(s, 'REALIZADO')"
-                  [pTooltip]="paradasPendientes(s).length ? 'Primero procese las paradas pendientes (Mapa)' : 'Finalizar servicio'"
+                  [pTooltip]="paradasPendientes(s).length ? 'Primero procese las paradas pendientes (botón Paradas)' : 'Finalizar servicio'"
                   tooltipPosition="top">
             <i class="pi pi-check"></i><span class="accion-label">Finalizar</span>
             <span *ngIf="paradasPendientes(s).length" class="badge bg-warning text-dark ms-1">{{ paradasPendientes(s).length }}</span>
           </button>
           <button *ngIf="s.estado === 'ASIGNADO' || s.estado === 'EN_RUTA'" class="btn btn-sm btn-outline-danger" (click)="abrirPasajeros(s)" pTooltip="Agregar pasajeros de emergencia" tooltipPosition="top"><i class="pi pi-user-plus"></i><span class="accion-label">Pasajeros</span></button>
-          <button *ngIf="mapaUrl(s) || s.paradas?.length" class="btn btn-sm btn-outline-info" (click)="verMapa(s)" pTooltip="Ver mapa y paradas" tooltipPosition="top"><i class="pi pi-map"></i><span class="accion-label">Mapa</span></button>
+          <button *ngIf="mapaUrl(s) || s.paradas?.length" class="btn btn-sm btn-outline-info" (click)="verMapa(s)" pTooltip="Ver checklist de paradas" tooltipPosition="top"><i class="pi pi-flag"></i><span class="accion-label">Paradas</span></button>
         </div>
       </td>
     </tr>
@@ -110,7 +110,9 @@
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h6 class="mb-0">Ruta: {{ servicioMapa.ruta || (servicioMapa.puntoPartida + ' → ' + servicioMapa.puntoLlegada) }}</h6>
       <div class="d-flex gap-2 align-items-center">
+        <!-- TEMPORALMENTE OCULTO: enlace a OpenStreetMap
         <a *ngIf="mapaUrl(servicioMapa) as url" class="btn btn-sm btn-outline-info" [href]="url" target="_blank" rel="noopener"><i class="pi pi-external-link me-1"></i>Abrir en OSM</a>
+        -->
         <button class="btn-close" (click)="servicioMapa = undefined; puntosMapaSel = []"></button>
       </div>
     </div>
@@ -226,6 +228,8 @@
         </div>
       </div>
     </div>
+    <!-- TEMPORALMENTE OCULTO: mapa Leaflet de la ruta
     <app-mapa [puntos]="puntosMapaSel" [origen]="origenMapa"></app-mapa>
+    -->
   </div>
 </div>

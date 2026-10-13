@@ -113,7 +113,7 @@ export class ConductorComponent implements OnInit, OnDestroy {
       if (pendientes.length) {
         const nombres = pendientes.map(p => `${p.orden}. ${p.punto}`).join(', ');
         this.alertService.showAlert('warning',
-          `${pendientes.length === 1 ? 'Falta' : 'Faltan'} ${pendientes.length} parada${pendientes.length > 1 ? 's' : ''} por procesar: ${nombres}. Registre u omita cada una desde "Mapa" antes de finalizar.`,
+          `${pendientes.length === 1 ? 'Falta' : 'Faltan'} ${pendientes.length} parada${pendientes.length > 1 ? 's' : ''} por procesar: ${nombres}. Registre u omita cada una desde "Paradas" antes de finalizar.`,
           'Servicio incompleto');
         return;
       }

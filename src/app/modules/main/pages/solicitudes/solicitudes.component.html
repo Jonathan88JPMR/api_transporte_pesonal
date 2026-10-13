@@ -199,9 +199,11 @@
         <ng-template #sinGps>
           <span class="text-muted"><i class="pi pi-info-circle me-1"></i>Sin señal GPS todavía</span>
         </ng-template>
+        <!-- TEMPORALMENTE OCULTO: mapa de ubicación de la unidad
         <button class="btn btn-sm btn-link px-2 py-0" (click)="verMapaTraslado(t)">
           <i class="pi pi-map-marker me-1"></i>Ver mapa
         </button>
+        -->
       </div>
       <div *ngIf="(t.solicitudes?.length ?? 0) > 1" class="mt-1">
         <h6 class="small mb-1">Solicitudes del traslado</h6>
@@ -221,7 +223,7 @@
   </ng-container>
 </p-dialog>
 
-<!-- Ubicación de la unidad: ruta de la solicitud + punto azul = posición GPS real -->
+<!-- TEMPORALMENTE OCULTO: Ubicación de la unidad: ruta de la solicitud + punto azul = posición GPS real
 <p-dialog [(visible)]="mapaAbierto" [modal]="true" [draggable]="false" [resizable]="false"
           [style]="{ width: '720px', 'max-width': '95vw' }"
           [header]="'Ubicación T-' + trasladoMapa?.idTraslado + ' · ' + (trasladoMapa?.placa ?? '')">
@@ -236,3 +238,4 @@
     </ng-template>
   </div>
 </p-dialog>
+-->
