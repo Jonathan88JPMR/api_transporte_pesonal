@@ -1,0 +1,30 @@
+.page-header h5 {
+  font-weight: 600;
+}
+
+/* Bloque KPI estilo Excel */
+.kpi-wrap {
+  max-width: 640px;
+}
+
+.kpi-table {
+  thead th {
+    background: #ffc107;
+    font-size: 0.8rem;
+  }
+
+  td:first-child {
+    font-weight: 500;
+  }
+}
+
+.chart-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  color: #555;
+}
+
+p-chart {
+  display: block;
+}

@@ -8,6 +8,7 @@ import { TransporteService } from '../../services/transporte.service';
 import { DexieService } from '@/app/shared/dixiedb/dexie-db.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
 import { environment } from '@/environments/environment';
+import { ComunicadoModalComponent } from '@/app/shared/comunicado-modal/comunicado-modal.component';
 
 interface MenuItem {
   label: string;
@@ -20,7 +21,7 @@ interface MenuItem {
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive, ComunicadoModalComponent],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss'
 })
@@ -34,6 +35,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
   isOnline = true;
   notificaciones: any[] = [];
   mostrarNotificaciones = false;
+  // Comunicados "sin servicio": si hay uno vigente al ingresar (o se publica
+  // mientras la app está abierta) el modal rojo bloquea la pantalla
+  comunicados: any[] = [];
+  mostrarComunicado = false;
   operacionesPendientes = 0;
   mostrarClave = false;
   claveActual = '';
@@ -73,9 +78,14 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.menu = [
       { label: 'Solicitudes', icon: 'bx-list-ul', route: '/main/solicitudes', seccion: 'Procesos', visible: esSupervisor },
       { label: 'Coordinación', icon: 'bx-git-branch', route: '/main/coordinador', seccion: 'Procesos', visible: esCoordinador },
+      // Órdenes de servicio: oculto mientras la flota sea 100% propia
+      // (las OS solo aplican a unidades de terceros). El módulo completo
+      // (componente, servicio, SP y endpoints) se conserva para reactivarlo.
+      // { label: 'Órdenes de servicio', icon: 'bx-file', route: '/main/ordenes-servicio', seccion: 'Procesos', visible: esCoordinador },
       { label: 'Mis servicios', icon: 'bxs-truck', route: '/main/conductor', seccion: 'Procesos', visible: esConductor },
+      { label: 'Dashboard', icon: 'bxs-dashboard', route: '/main/dashboard', seccion: 'Reportes', visible: esAdmin },
       { label: 'Reportes', icon: 'bx-bar-chart', route: '/main/reportes', seccion: 'Reportes', visible: esAdmin },
-      { label: 'Administración', icon: 'bx-cog', route: '/main/administracion', seccion: 'Configuración', visible: rol === 'ADTRANS' }
+      { label: 'Administración', icon: 'bx-cog', route: '/main/administracion', seccion: 'Configuración', visible: esAdmin }
     ].filter(item => item.visible);
 
     this.updateCurrentPath();
@@ -92,6 +102,26 @@ export class LayoutComponent implements OnInit, OnDestroy {
       this.notificarPush(lista);
       this.notificaciones = lista;
     } catch { }
+    await this.revisarComunicadoVigente();
+  }
+
+  // El primer comunicado cuyo rango horario está vigente ahora mismo
+  get comunicadoVigente(): any | undefined {
+    return this.comunicados.find(c => c.vigente === 1 || c.vigente === true);
+  }
+
+  // Ni bien ingresa (y en cada ciclo de 30 s) se consulta si hay un comunicado
+  // vigente: si aparece uno nuevo, el modal bloqueante se abre una sola vez
+  // por comunicado y por sesión
+  private async revisarComunicadoVigente() {
+    try { this.comunicados = await this.transporteService.comunicadosActivos(); }
+    catch { return; }
+    const c = this.comunicadoVigente;
+    if (!c) { this.mostrarComunicado = false; return; }
+    if (sessionStorage.getItem('comunicadoVisto') !== String(c.idComunicado)) {
+      this.mostrarComunicado = true;
+      sessionStorage.setItem('comunicadoVisto', String(c.idComunicado));
+    }
   }
 
   // RF-037: notificación push del navegador cuando llega un aviso nuevo

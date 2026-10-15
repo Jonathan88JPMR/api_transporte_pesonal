@@ -48,6 +48,9 @@ export class DexieService {
     await this.db.usuario.clear();
     await this.db.usuario.add(usuario);
     localStorage.setItem('usuario', JSON.stringify(usuario));
+    // Cada login es una sesión nueva: el modal de comunicado "sin servicio"
+    // debe volver a mostrarse aunque el usuario anterior ya lo haya visto
+    sessionStorage.removeItem('comunicadoVisto');
   }
 
   async showUsuario(): Promise<Usuario | undefined> {
@@ -61,6 +64,9 @@ export class DexieService {
   async clearUsuario(): Promise<void> {
     await this.db.usuario.clear();
     localStorage.removeItem('usuario');
+    // Al cerrar/expirar la sesión también se resetea el flag del comunicado:
+    // el siguiente login (de cualquier usuario) verá el modal de nuevo
+    sessionStorage.removeItem('comunicadoVisto');
   }
 
   async encolarOperacion(ruta: string, cuerpo: unknown): Promise<void> {

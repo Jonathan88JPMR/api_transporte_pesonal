@@ -12,7 +12,10 @@ import { TransporteService } from '../../services/transporte.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
 import { AuthService } from '@/app/modules/auth/services/auth.service';
 import { EstadoParada, Motivo, Parada, Punto, Solicitud, Traslado, Unidad, Usuario } from '@/app/models/transporte.models';
-import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
+// MapaComponent se reimporta cuando se reactive el diálogo de mapa (oculto en el HTML)
+//import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
+import { PuntoMapa } from '@/app/shared/mapa/mapa.component';
+import { ComunicadoModalComponent } from '@/app/shared/comunicado-modal/comunicado-modal.component';
 
 @Component({
   selector: 'app-solicitudes',
@@ -20,7 +23,8 @@ import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
   imports: [
     CommonModule, ReactiveFormsModule, FormsModule,
     TableModule, DialogModule, SelectModule, InputNumberModule, ButtonModule, TagModule, TooltipModule,
-    MapaComponent
+    //MapaComponent, ComunicadoModalComponent
+    ComunicadoModalComponent
   ],
   templateUrl: './solicitudes.component.html',
   styleUrl: './solicitudes.component.scss'
@@ -36,6 +40,11 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
   usuario?: Usuario;
   filtroDesde = '';
   filtroHasta = '';
+  // Comunicados vigentes/próximos del coordinador ("horas sin servicio"):
+  // si hay uno vigente ahora, no se pueden crear solicitudes (emergencia sí pasa)
+  comunicados: any[] = [];
+  // Modal rojo de alerta: se abre solo al entrar si hay un comunicado vigente
+  mostrarComunicado = false;
 
   cargando = false;
   mostrarDialogo = false;
@@ -66,7 +75,24 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
 
   async ngOnInit() {
     this.usuario = await this.authService.getUser();
-    await Promise.all([this.cargar(), this.cargarCatalogos(), this.cargarTraslados()]);
+    await Promise.all([this.cargar(), this.cargarCatalogos(), this.cargarTraslados(), this.cargarComunicados()]);
+    // La alerta de entrada la muestra el layout (modal bloqueante global);
+    // aquí el modal solo reaparece si intenta crear/editar durante el bloqueo
+  }
+
+  // Comunicados publicados por el coordinador (todos los roles los ven)
+  async cargarComunicados() {
+    try { this.comunicados = await this.transporteService.comunicadosActivos(); } catch { this.comunicados = []; }
+  }
+
+  // El primero que está vigente en este momento → bloquea la creación
+  get comunicadoVigente(): any | undefined {
+    return this.comunicados.find(c => c.vigente === 1 || c.vigente === true);
+  }
+
+  // Guardar solo se habilita dentro del bloqueo si es emergencia médica
+  get bloqueadoPorComunicado(): boolean {
+    return !!this.comunicadoVigente && this.form.get('esEmergencia')?.value !== true;
   }
 
   async cargar() {
@@ -144,7 +170,11 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     }
   }
 
-  crear() {
+  async crear() {
+    // Si hay un comunicado vigente, Crear no abre el formulario: vuelve al
+    // modal bloqueante. La única salida es "Es emergencia médica".
+    await this.cargarComunicados();
+    if (this.comunicadoVigente) { this.mostrarComunicado = true; return; }
     this.editando = undefined;
     // Fecha y hora siempre del sistema — el backend además las fuerza a GETDATE()
     this.form.reset({
@@ -155,7 +185,24 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     this.mostrarDialogo = true;
   }
 
-  editar(s: Solicitud) {
+  // Botón del modal de comunicado: la única solicitud permitida durante el
+  // bloqueo es una emergencia médica (el SP también la deja pasar)
+  crearEmergencia() {
+    this.mostrarComunicado = false;
+    this.editando = undefined;
+    this.form.reset({
+      fechaProgramada: this.fechaHoy(), horaProgramada: this.horaAhora(),
+      cantidad: 1, observacion: '', prioridad: 'EMERGENCIA', esEmergencia: true
+    });
+    this.alCambiarEmergencia(true);
+    this.mostrarDialogo = true;
+  }
+
+  async editar(s: Solicitud) {
+    // Editar también está bloqueado en el rango sin servicio (salvo que la
+    // propia solicitud ya sea una emergencia)
+    await this.cargarComunicados();
+    if (this.comunicadoVigente && !s.esEmergencia) { this.mostrarComunicado = true; return; }
     this.editando = s;
     this.form.reset({
       fechaProgramada: s.fechaProgramada,

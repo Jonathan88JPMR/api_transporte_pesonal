@@ -179,8 +179,55 @@ export class TransporteService {
     return this.post<Auditoria[]>('reportes/auditoria', {}).then(r => this.unwrap(r));
   }
 
-  administrarCatalogo(entidad: 'USUARIO' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA', accion: 'LISTAR' | 'GUARDAR' | 'ELIMINAR', datos: any = {}): Promise<any[]> {
+  administrarCatalogo(entidad: 'USUARIO' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' | 'TRANSPORTISTA' | 'TARIFA' | 'CECO' | 'TIPO_VEHICULO', accion: 'LISTAR' | 'GUARDAR' | 'ELIMINAR', datos: any = {}): Promise<any[]> {
     return this.mutar<any[]>('administracion/catalogo', { entidad, accion, ...datos }).then(r => this.unwrap(r));
+  }
+
+  // ============ Órdenes de servicio ============
+  // Flujo: previa (generarOS previa=true) → generar (graba OS+detalle+payload)
+  // → migrar (a logística) → estado-spring (trae numeroOrdenSpring de vuelta)
+
+  // Genera las OS del período (una por transportista). mutar() ya envía idOperacion para idempotencia.
+  // previa: solo calcula sin grabar; detalle: cecos elegidos por fila [{idTransportista,idArea,idCeco}]
+  generarOS(desde: string, hasta: string, detalle?: any[], previa = false): Promise<any> {
+    return this.mutar<any>('os/generar', { desde, hasta, previa, detalle }).then(r => this.unwrap(r)[0]);
+  }
+
+  // OS persistidas con su detalle y traslados incluidos (filtros por fecha/estado)
+  listarOS(filtro: { desde?: string; hasta?: string; estado?: string } = {}): Promise<any[]> {
+    return this.consultar<any[]>('os/listar', filtro).then(r => this.unwrap(r));
+  }
+
+  // Migra a logística todas las GENERADA/ERROR, o solo la indicada
+  migrarOS(idOS?: number): Promise<any> {
+    return this.post<any>('os/migrar', idOS ? { idOS } : {});
+  }
+
+  // Consulta en logística el estado de las OS migradas y guarda el número SPRING
+  consultarEstadoSpring(idOS?: number): Promise<any> {
+    return this.post<any>('os/estado-spring', idOS ? { idOS } : {});
+  }
+
+  // ============ Comunicados (horas sin servicio) ============
+  // El coordinador publica rangos sin servicio; el SP bloquea nuevas solicitudes
+  // dentro del rango y difunde notificación a supervisores/coordinadores/admin.
+
+  listarComunicados(): Promise<any[]> {
+    return this.consultar<any[]>('comunicados/listar', {}).then(r => this.unwrap(r));
+  }
+
+  // mutar() agrega idOperacion → idempotencia offline (reintentos no duplican)
+  guardarComunicado(datos: any): Promise<any> {
+    return this.mutar<any>('comunicados/guardar', datos);
+  }
+
+  eliminarComunicado(id: number): Promise<any> {
+    return this.post<any>('comunicados/eliminar', { id });
+  }
+
+  // Comunicados vigentes/próximos — para el banner de solicitudes (todos los roles)
+  comunicadosActivos(): Promise<any[]> {
+    return this.consultar<any[]>('comunicados/activos', {}).then(r => this.unwrap(r));
   }
 
   cambiarClave(usuario: string, claveActual: string, claveNueva: string): Promise<any> {

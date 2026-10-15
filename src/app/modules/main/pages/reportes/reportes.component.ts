@@ -119,6 +119,68 @@ export class ReportesComponent implements OnInit {
 
   imprimirPdf(): void { window.print(); }
 
+  // Excel con el formato del reporte de movilidad (MES, SEMANA, DIA, ... INTERVALO)
+  // exceljs/file-saver se cargan bajo demanda para no inflar el bundle inicial
+  async exportarExcel(): Promise<void> {
+    if (!this.registrosFiltrados.length) return;
+    const ExcelJS = await import('exceljs');
+    const { saveAs } = await import('file-saver');
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const hhmm = (iso?: string | null) => iso ? iso.substring(11, 16) : '';
+    const fechaProg = (r: Solicitud) => r.fechaProgramada ? new Date(r.fechaProgramada + 'T00:00:00') : null;
+    // Número de semana ISO del año
+    const semana = (f: Date) => {
+      const d = new Date(Date.UTC(f.getFullYear(), f.getMonth(), f.getDate()));
+      d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+      return 'SEM-' + String(Math.ceil((((d.getTime() - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000) + 1) / 7)).padStart(2, '0');
+    };
+    // Minutos entre lo programado y el inicio real del servicio
+    const demora = (r: Solicitud) => {
+      const f = fechaProg(r);
+      if (!f || !r.fechaInicio || !r.horaProgramada) return '';
+      const [h, m] = r.horaProgramada.split(':').map(Number);
+      const prog = new Date(f); prog.setHours(h, m, 0, 0);
+      return Math.round((new Date(r.fechaInicio).getTime() - prog.getTime()) / 60000) + ' min';
+    };
+    const intervalo = (r: Solicitud) =>
+      r.fechaInicio && r.fechaFin ? `${hhmm(r.fechaInicio)} - ${hhmm(r.fechaFin)}` : '';
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Movilidad');
+    const columnas = ['MES', 'SEMANA', 'DIA', 'NOMBRE', 'H.PROGRAMADA', 'AREA', 'PTO. PARTIDA',
+      'PTO. LLEGADA', 'CANTIDAD', 'MOTIVO', 'PLACA', 'REALIZADO', 'DEMORA', 'APOYO/HR', 'INTERVALO'];
+    const header = ws.addRow(columnas);
+    header.height = 20;
+    const borde = {
+      top: { style: 'thin' as const }, left: { style: 'thin' as const },
+      bottom: { style: 'thin' as const }, right: { style: 'thin' as const }
+    };
+    header.eachCell(c => {
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF337AB7' } };
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+      c.border = borde;
+    });
+    ws.columns = columnas.map(c => ({ key: c, width: ['AREA', 'PTO. PARTIDA', 'PTO. LLEGADA', 'MOTIVO'].includes(c) ? 18 : 12 }));
+
+    this.registrosFiltrados.forEach((r, i) => {
+      const f = fechaProg(r);
+      const row = ws.addRow([
+        f ? MESES[f.getMonth()] : '', f ? semana(f) : '', r.fechaProgramada ?? '',
+        r.nombre, r.horaProgramada, r.area ?? '', r.puntoPartida, r.puntoLlegada,
+        r.cantidad, r.motivo ?? '', this.placaTexto(r), r.realizado ? 'SI' : 'NO',
+        demora(r), '', intervalo(r)
+      ]);
+      const bg = i % 2 === 0 ? 'FFFFFFFF' : 'FFEBEBEB';
+      row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } }; c.border = borde; });
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      `reporte-movilidad-${this.desde}-${this.hasta}.xlsx`);
+  }
+
   exportarCsv(): void {
     const columnas = ['Fecha', 'Solicitante', 'Área', 'Hora', 'Origen', 'Destino', 'Cantidad', 'Motivo', 'Prioridad', 'Placa', 'Estado'];
     const filas = this.registrosFiltrados.map(r => [r.fechaProgramada, r.nombre, r.area ?? '', r.horaProgramada,

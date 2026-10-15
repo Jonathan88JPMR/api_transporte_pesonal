@@ -41,7 +41,10 @@
   <ng-template #body let-s>
     <tr [class.table-success]="s.realizado" [class.table-danger]="s.prioridad === 'EMERGENCIA' || s.esEmergencia">
       <td>{{ s.fechaProgramada | date:'dd/MM' }} {{ s.horaProgramada }}</td>
-      <td>{{ s.nombre }}</td>
+      <td>
+        {{ s.nombre }}
+        <div class="small text-muted" *ngIf="s.area">{{ s.area }}</div>
+      </td>
       <td>{{ s.puntoPartida }}</td>
       <td>{{ s.puntoLlegada }}</td>
       <td>{{ s.cantidad }}</td>
@@ -123,6 +126,7 @@
       <ng-template #header>
         <tr>
           <th style="width:40px">#</th>
+          <th>TIPO</th>
           <th>PUNTO</th>
           <th>PLAN <span class="text-muted fw-normal">(↑ sube · ↓ baja)</span></th>
           <th>REAL</th>
@@ -137,6 +141,7 @@
             [class.table-success]="p.estado === 'REALIZADA'"
             [class.table-secondary]="p.estado === 'OMITIDA'">
           <td>{{ p.orden ?? i + 1 }}</td>
+          <td><p-tag [value]="tipoParada(p).texto" [severity]="tipoParada(p).severity"></p-tag></td>
           <td>
             {{ p.punto }}
             <div class="small text-muted" *ngIf="p.estado === 'OMITIDA' && p.motivoOmision">{{ p.motivoOmision }}</div>

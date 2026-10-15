@@ -5,6 +5,16 @@
   </button>
 </div>
 
+<!-- Comunicados del coordinador: rojo si el rango sin servicio está vigente
+     ahora (bloquea crear), amarillo si es próximo -->
+<div *ngFor="let c of comunicados"
+     class="alert py-2 small mb-2" [class.alert-danger]="c.vigente" [class.alert-warning]="!c.vigente">
+  <i class="bx bx-megaphone me-1"></i>
+  <b>{{ c.titulo }}</b> — Sin servicio el {{ c.fecha | date:'dd/MM/yyyy' }} de {{ c.horaInicio }} a {{ c.horaFin }}.
+  {{ c.mensaje }}
+  <span *ngIf="c.unidades" class="d-block">Unidades ocupadas: {{ c.unidades }}<span *ngIf="c.motivoActividad"> · {{ c.motivoActividad }}</span></span>
+</div>
+
 <div class="d-flex gap-2 align-items-end mb-2">
   <div>
     <label class="form-label mb-0 small">Desde</label>
@@ -76,6 +86,12 @@
   </ng-template>
 </p-table>
 
+<!-- Modal bloqueante de comunicado: la alerta de entrada la abre el layout;
+     aquí reaparece si el supervisor intenta Crear/Editar durante el rango
+     sin servicio. Con salida de emergencia médica. -->
+<app-comunicado-modal [comunicado]="comunicadoVigente" [(visible)]="mostrarComunicado"
+                      [permiteEmergencia]="true" (emergencia)="crearEmergencia()"></app-comunicado-modal>
+
 <!-- Diálogo crear/editar -->
 <p-dialog [(visible)]="mostrarDialogo" [modal]="true" [style]="{ width: '480px' }"
           [header]="editando ? 'Editar solicitud' : 'Solicitud Form'" [draggable]="false">
@@ -128,10 +144,16 @@
              (change)="alCambiarEmergencia(form.get('esEmergencia')?.value)" />
       <label class="form-check-label text-danger fw-semibold" for="esEmergencia">Es emergencia médica</label>
     </div>
+    <!-- Aviso de bloqueo: solo una emergencia médica puede crearse en el rango -->
+    <div *ngIf="comunicadoVigente" class="alert alert-danger py-2 small mb-0">
+      <i class="bx bx-block me-1"></i>
+      Sin servicio de {{ comunicadoVigente.horaInicio }} a {{ comunicadoVigente.horaFin }} — {{ comunicadoVigente.titulo }}.
+      Solo se admiten emergencias médicas en este rango.
+    </div>
   </form>
   <ng-template #footer>
     <button class="btn btn-outline-secondary" (click)="mostrarDialogo = false">Cancel</button>
-    <button class="btn btn-primary" (click)="guardar()" [disabled]="form.invalid">Save</button>
+    <button class="btn btn-primary" (click)="guardar()" [disabled]="form.invalid || bloqueadoPorComunicado">Save</button>
   </ng-template>
 </p-dialog>
 

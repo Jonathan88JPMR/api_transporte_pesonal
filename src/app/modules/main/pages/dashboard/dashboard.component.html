@@ -1,0 +1,82 @@
+<div class="page-header mb-3">
+  <h5 class="mb-0">Dashboard de actividades de transporte</h5>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body d-flex gap-3 align-items-end flex-wrap">
+    <div>
+      <label class="form-label">Desde</label>
+      <input type="date" class="form-control" [(ngModel)]="desde" />
+    </div>
+    <div>
+      <label class="form-label">Hasta</label>
+      <input type="date" class="form-control" [(ngModel)]="hasta" />
+    </div>
+    <button class="btn btn-primary" (click)="cargar()">
+      <i class="pi pi-refresh me-1"></i> Generar
+    </button>
+  </div>
+</div>
+
+<!-- Bloque KPI (réplica del Excel) -->
+<div class="card mb-3" *ngIf="indicadores">
+  <div class="card-body">
+    <div class="table-responsive kpi-wrap">
+      <table class="table table-sm table-bordered mb-0 kpi-table">
+        <thead>
+          <tr><th>KPI</th><th class="text-center">CANTIDAD</th><th class="text-center">%</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CANTIDAD DE VIAJES</td><td class="text-center">{{ indicadores.totalSolicitudes }}</td><td class="text-center">100%</td></tr>
+          <tr><td>CANTIDAD DE PERSONAL TRANSPORTADO <span class="text-muted small">(planificado)</span></td><td class="text-center">{{ indicadores.totalPersonas }}</td><td class="text-center">100%</td></tr>
+          <tr><td>PERSONAL TRANSPORTADO <span class="text-muted small">(real, según paradas)</span></td><td class="text-center">{{ indicadores.personasReales ?? 0 }}</td><td class="text-center" [title]="'Porcentaje vs lo planificado'">{{ porcentajeReal | number:'1.0-1' }}%</td></tr>
+          <tr *ngFor="let m of porMotivo">
+            <td class="ps-4 text-uppercase">{{ m.motivo }}</td>
+            <td class="text-center">{{ m.personas }}</td>
+            <td class="text-center">{{ m.porcentaje | number:'1.0-1' }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Gráficos (réplica de la hoja DASHBOARD del Excel) -->
+<div class="row g-3" *ngIf="indicadores">
+  <div class="col-md-6"><div class="card h-100"><div class="card-body">
+    <h6 class="chart-title">Movimiento de personal por cada área</h6>
+    <p-chart type="bar" [data]="chartArea" [options]="opcionesBar" height="260px"></p-chart>
+  </div></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-body">
+    <h6 class="chart-title">Motivo de movimiento</h6>
+    <p-chart type="bar" [data]="chartMotivo" [options]="opcionesBar" height="260px"></p-chart>
+  </div></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-body">
+    <h6 class="chart-title">Total de viajes realizados</h6>
+    <p-chart type="pie" [data]="chartRealizados" [options]="opcionesPie" height="260px"></p-chart>
+  </div></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-body">
+    <h6 class="chart-title">Horas con mayor frecuencia de movimientos</h6>
+    <p-chart type="bar" [data]="chartHoras" [options]="opcionesBar" height="260px"></p-chart>
+  </div></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-body">
+    <h6 class="chart-title">Cantidad de personal trasladado por unidad</h6>
+    <p-chart type="bar" [data]="chartUnidad" [options]="opcionesBar" height="260px"></p-chart>
+  </div></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-body">
+    <h6 class="chart-title">Área que trasladó más personal</h6>
+    <p-chart type="bar" [data]="chartAreaTop" [options]="opcionesBar" height="260px"></p-chart>
+  </div></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-body">
+    <h6 class="chart-title">Cantidad de personal transportados por semana</h6>
+    <p-chart type="bar" [data]="chartSemana" [options]="opcionesBar" height="260px"></p-chart>
+  </div></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-body">
+    <h6 class="chart-title">Tendencia de personal transportado por mes</h6>
+    <p-chart type="line" [data]="chartMes" [options]="opcionesBar" height="260px"></p-chart>
+  </div></div></div>
+</div>
+
+<div class="text-center text-muted py-5" *ngIf="!cargando && indicadores && !(indicadores.totalSolicitudes)">
+  <i class="pi pi-inbox fs-3 d-block mb-2"></i>Sin datos en el rango seleccionado
+</div>

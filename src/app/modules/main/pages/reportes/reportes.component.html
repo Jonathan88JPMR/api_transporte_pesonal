@@ -15,8 +15,11 @@
     <button class="btn btn-primary" (click)="cargar()">
       <i class="pi pi-search me-1"></i> Generar
     </button>
+    <button class="btn btn-success" (click)="exportarExcel()" [disabled]="!registrosFiltrados.length">
+      <i class="pi pi-file-excel me-1"></i> Exportar Excel
+    </button>
     <button class="btn btn-outline-success" (click)="exportarCsv()" [disabled]="!registrosFiltrados.length">
-      <i class="pi pi-download me-1"></i> Exportar CSV
+      <i class="pi pi-download me-1"></i> CSV
     </button>
     <button class="btn btn-outline-danger" (click)="imprimirPdf()" [disabled]="!registros.length"><i class="pi pi-file-pdf me-1"></i>Imprimir / PDF</button>
     <div class="ms-auto d-flex gap-4" *ngIf="registros.length">
@@ -52,14 +55,15 @@
 
 <div class="row g-3 mb-3" *ngIf="indicadores">
   <div class="col-md-3"><div class="card card-body"><small>Solicitudes</small><h4>{{ indicadores.totalSolicitudes }}</h4></div></div>
-  <div class="col-md-3"><div class="card card-body"><small>Personas</small><h4>{{ indicadores.totalPersonas }}</h4></div></div>
+  <div class="col-md-3"><div class="card card-body"><small>Personas <span class="text-muted">(plan → real)</span></small><h4>{{ indicadores.totalPersonas }} <small class="text-muted">/ {{ indicadores.personasReales ?? 0 }}</small></h4></div></div>
   <div class="col-md-3"><div class="card card-body"><small>Realizados</small><h4>{{ indicadores.totalRealizados }}</h4></div></div>
   <div class="col-md-3"><div class="card card-body text-danger"><small>Emergencias</small><h4>{{ indicadores.totalEmergencias }}</h4></div></div>
 </div>
 <div class="row g-3 mb-3" *ngIf="indicadores">
-  <div class="col-md-4"><div class="card card-body"><small>Duración promedio</small><h5>{{ indicadores.tiempoPromedioMinutos | number:'1.0-1' }} min</h5></div></div>
-  <div class="col-md-4"><div class="card card-body"><small>Espera promedio</small><h5>{{ indicadores.esperaPromedioMinutos | number:'1.0-1' }} min</h5></div></div>
-  <div class="col-md-4"><div class="card card-body"><small>Puntualidad ±10 min</small><h5>{{ indicadores.puntualidadPorcentaje | number:'1.0-1' }}%</h5></div></div>
+  <div class="col-md-3"><div class="card card-body"><small>Duración promedio</small><h5>{{ indicadores.tiempoPromedioMinutos | number:'1.0-1' }} min</h5></div></div>
+  <div class="col-md-3"><div class="card card-body"><small>Espera promedio</small><h5>{{ indicadores.esperaPromedioMinutos | number:'1.0-1' }} min</h5></div></div>
+  <div class="col-md-3"><div class="card card-body"><small>Puntualidad ±10 min</small><h5>{{ indicadores.puntualidadPorcentaje | number:'1.0-1' }}%</h5></div></div>
+  <div class="col-md-3"><div class="card card-body text-success"><small>Cumplimiento</small><h5>{{ indicadores.cumplimientoPorcentaje | number:'1.0-1' }}%</h5></div></div>
 </div>
 <div class="card mb-3" *ngIf="indicadores?.unidades?.length"><div class="card-body"><h6>Eficiencia por unidad</h6>
   <p-table [value]="unidades" [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]"

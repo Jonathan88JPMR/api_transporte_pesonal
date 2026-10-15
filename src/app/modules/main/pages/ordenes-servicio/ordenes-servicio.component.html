@@ -1,0 +1,203 @@
+<div class="page-header mb-3">
+  <h5>Órdenes de servicio</h5>
+  <p class="text-muted mb-0">Agrupa los traslados realizados por transportista, genera la OS y la migra a logística (luego a SPRING).</p>
+</div>
+
+<!-- Barra de acciones del flujo OS:
+     rango de fechas → Previsualizar (paso 1) → Migrar pendientes (paso 3)
+     → Estado SPRING (paso 4, refresca numeroOSSpring desde logística) -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small text-muted mb-1">Desde</label>
+        <input type="date" class="form-control" [(ngModel)]="desde" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted mb-1">Hasta</label>
+        <input type="date" class="form-control" [(ngModel)]="hasta" />
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100" (click)="previsualizar()" [disabled]="generando">
+          <i class="bx bx-search"></i> {{ generando ? 'Calculando…' : 'Previsualizar OS' }}
+        </button>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-success w-100" (click)="migrar()" [disabled]="migrando || pendientes === 0">
+          <i class="bx bx-cloud-upload"></i> {{ migrando ? 'Migrando…' : `Migrar pendientes (${pendientes})` }}
+        </button>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-outline-primary w-100" (click)="consultarSpring()" [disabled]="consultandoSpring || migradas === 0">
+          <i class="bx bx-refresh"></i> {{ consultandoSpring ? 'Consultando…' : `Estado SPRING (${migradas})` }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PASO 1/2 — Previa de la OS: dos vistas según el origen del detalle.
+     TAREO: filas calculadas del tareo del ERP (solo lectura, ceco+cuenta+proyecto
+     ya vienen). AREA: fallback sin tareo, el coordinador elige el ceco por fila
+     (obligatorio; filas incompletas se pintan en amarillo y bloquean el generar) -->
+<div class="card mb-3 border-primary" *ngIf="previaOrdenes">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <b>Vista previa — {{ previaOrdenes[0]?.modoCeco === 'TAREO' ? 'distribución automática por horas de tareo del ERP' : 'elija el centro de costo de cada área (obligatorio)' }} y confirme</b>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary btn-sm" (click)="generar()" [disabled]="generando">
+          <i class="bx bx-check"></i> Confirmar y generar
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="cancelarPrevia()">Cancelar</button>
+      </div>
+    </div>
+    <div *ngFor="let o of previaOrdenes" class="border rounded p-2 mb-2">
+      <div class="d-flex justify-content-between flex-wrap">
+        <b>{{ o.nombreTransportista }} <small class="text-muted">{{ o.rucTransportista }}</small></b>
+        <span class="small text-muted">
+          {{ o.totalViajes }} viaje(s) · {{ o.totalPasajeros }} pasajero(s) ·
+          Tarifa S/ {{ o.totalTarifa | number:'1.2-2' }} · IGV S/ {{ o.igvTotalTarifa | number:'1.2-2' }}
+        </span>
+      </div>
+      <!-- Modo TAREO: el detalle llega del ERP, solo lectura -->
+      <table class="table table-sm table-bordered mb-0 mt-2" *ngIf="o.modoCeco === 'TAREO'">
+        <thead><tr><th>CeCo</th><th>Cuenta</th><th>Proyecto</th><th>Fundo</th><th>Cultivo</th><th>Horas</th><th>Costo S/</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let d of o.detalle" [class.table-warning]="!d.ceco || !d.cuenta || !d.idproyecto">
+            <td>{{ d.ceco }}</td>
+            <td>{{ d.cuenta }}</td>
+            <td>{{ d.idproyecto }}</td>
+            <td>{{ d.codfundo }}</td>
+            <td>{{ d.idcultivo }}</td>
+            <td>{{ d.cantidad | number:'1.2-2' }}</td>
+            <td>{{ d.costo | number:'1.2-2' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <!-- Modo AREA (fallback sin tareo): ceco elegible por fila -->
+      <table class="table table-sm table-bordered mb-0 mt-2" *ngIf="o.modoCeco !== 'TAREO'">
+        <thead><tr><th>Área</th><th>Pasajeros</th><th>Costo S/</th><th>Centro de costo</th><th>Cuenta</th><th>Proyecto</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let d of o.detalle" [class.table-warning]="!cecoDe(d.idCecoSel)?.cuenta || !cecoDe(d.idCecoSel)?.idproyecto">
+            <td>{{ d.area ?? '—' }}</td>
+            <td>{{ d.cantidad }}</td>
+            <td>{{ d.costo | number:'1.2-2' }}</td>
+            <td>
+              <select class="form-select form-select-sm" [(ngModel)]="d.idCecoSel" [class.is-invalid]="!d.idCecoSel">
+                <option [ngValue]="null">Sin ceco</option>
+                <option *ngFor="let c of cecos" [ngValue]="c.idCeco">{{ c.ceco }} — {{ c.descripcion }}</option>
+              </select>
+            </td>
+            <td>{{ cecoDe(d.idCecoSel)?.cuenta ?? '—' }}</td>
+            <td>{{ cecoDe(d.idCecoSel)?.idproyecto ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Traslados que no entraron a la previa: unidad sin transportista o sin tarifa -->
+<div class="alert alert-warning py-2 small" *ngIf="excluidos.length">
+  <b>Traslados no incluidos:</b>
+  <span *ngFor="let x of excluidos" class="me-2 d-inline-block">
+    {{ x.placa }} ({{ x.origen }} → {{ x.destino }}): {{ x.motivo === 'SIN_TRANSPORTISTA' ? 'unidad sin transportista' : 'sin tarifa' }};
+  </span>
+</div>
+
+<!-- OS ya generadas: N° externo = número que le puso logística al recibirla;
+     N° SPRING = número definitivo en el ERP (se llena con "Estado SPRING") -->
+<p-table [value]="ordenes" [paginator]="true" [rows]="10" [rowHover]="true"
+         [showCurrentPageReport]="true" currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} OS"
+         styleClass="p-datatable-sm p-datatable-striped table-mobile-cards">
+  <ng-template #header>
+    <tr>
+      <th>#</th><th>Transportista</th><th>Período</th><th>Viajes</th><th>Pasajeros</th>
+      <th>Tarifa S/</th><th>IGV S/</th><th>Estado</th><th>N° externo</th><th>N° SPRING</th><th>Acciones</th>
+    </tr>
+  </ng-template>
+  <ng-template #body let-o let-expanded="expanded">
+    <tr>
+      <td data-label="#">{{ o.idOS }}</td>
+      <td data-label="Transportista"><b>{{ o.nombreTransportista }}</b><br><small class="text-muted">{{ o.rucTransportista }}</small></td>
+      <td data-label="Período">{{ o.fechaDesde | date:'dd/MM/yy' }} – {{ o.fechaHasta | date:'dd/MM/yy' }}</td>
+      <td data-label="Viajes">{{ o.totalViajes }}</td>
+      <td data-label="Pasajeros">{{ o.totalPasajeros }}</td>
+      <td data-label="Tarifa S/">{{ o.totalTarifa | number:'1.2-2' }}</td>
+      <td data-label="IGV S/">{{ o.igvTotalTarifa | number:'1.2-2' }}</td>
+      <td data-label="Estado">
+        <p-tag [value]="estadoTag(o.estado).texto" [severity]="estadoTag(o.estado).sev"></p-tag>
+        <div *ngIf="o.estado === 'ERROR'" class="small text-danger" [title]="o.ultimoError">{{ o.ultimoError }}</div>
+      </td>
+      <td data-label="N° externo">{{ o.numeroOSExterno ?? '—' }}</td>
+      <td data-label="N° SPRING">
+        <ng-container *ngIf="o.numeroOSSpring; else sinSpring">
+          <span class="badge bg-primary">{{ o.numeroOSSpring }}</span>
+        </ng-container>
+        <ng-template #sinSpring>
+          <span class="text-muted small">{{ o.estado === 'MIGRADA' ? (o.estadoLogistica ?? 'pendiente en logística') : '—' }}</span>
+        </ng-template>
+      </td>
+      <td data-label="Acciones">
+        <div class="d-flex gap-1 align-items-center justify-content-center">
+          <button class="btn btn-sm btn-outline-secondary" (click)="toggle(o.idOS)" pTooltip="Ver detalle" tooltipPosition="top">
+            <i class="pi" [class.pi-chevron-down]="!expandidas.has(o.idOS)" [class.pi-chevron-up]="expandidas.has(o.idOS)"></i>
+          </button>
+          <button *ngIf="o.estado !== 'MIGRADA'" class="btn btn-sm btn-outline-success" (click)="migrar(o)" [disabled]="migrando"
+                  [pTooltip]="o.estado === 'ERROR' ? 'Reintentar migración' : 'Migrar a logística'" tooltipPosition="top">
+            <i class="bx bx-cloud-upload"></i><span class="accion-label">{{ o.estado === 'ERROR' ? 'Reintentar' : 'Migrar' }}</span>
+          </button>
+          <!-- refresh por fila: solo mientras la OS migrada aún no tiene número SPRING -->
+          <button *ngIf="o.estado === 'MIGRADA' && o.numeroOSExterno && !o.numeroOSSpring"
+                  class="btn btn-sm btn-outline-primary" (click)="consultarSpring(o)" [disabled]="consultandoSpring"
+                  pTooltip="Consultar estado en logística/SPRING" tooltipPosition="top">
+            <i class="bx bx-refresh"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+    <tr *ngIf="expandidas.has(o.idOS)" class="os-detalle-row">
+      <td colspan="11">
+        <div class="row g-3">
+          <div class="col-md-7">
+            <div class="small text-muted mb-1"><b>Distribución del costo {{ o.detalle?.[0]?.origen === 'TAREO' ? 'por horas de tareo' : 'por área' }}</b></div>
+            <table class="table table-sm table-bordered mb-0" *ngIf="o.detalle?.[0]?.origen === 'TAREO'">
+              <thead><tr><th>CeCo</th><th>Cuenta</th><th>Proyecto</th><th>Fundo</th><th>Cultivo</th><th>Horas</th><th>Costo S/</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let d of o.detalle">
+                  <td>{{ d.ceco ?? '—' }}</td><td>{{ d.cuenta ?? '—' }}</td><td>{{ d.idproyecto ?? '—' }}</td>
+                  <td>{{ d.codfundo ?? '—' }}</td><td>{{ d.idcultivo ?? '—' }}</td>
+                  <td>{{ d.cantidad | number:'1.2-2' }}</td><td>{{ d.costo | number:'1.2-2' }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <table class="table table-sm table-bordered mb-0" *ngIf="o.detalle?.[0]?.origen !== 'TAREO'">
+              <thead><tr><th>Área</th><th>CeCo</th><th>Cuenta</th><th>Proyecto</th><th>Pasajeros</th><th>Costo S/</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let d of o.detalle">
+                  <td>{{ d.area ?? '—' }}</td><td>{{ d.ceco ?? '—' }}</td><td>{{ d.cuenta ?? '—' }}</td>
+                  <td>{{ d.idproyecto ?? '—' }}</td><td>{{ d.cantidad }}</td><td>{{ d.costo | number:'1.2-2' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="col-md-5">
+            <div class="small text-muted mb-1"><b>Traslados incluidos</b></div>
+            <div>
+              <span *ngFor="let t of o.traslados" class="badge bg-light text-dark border me-1 mb-1" [title]="t.ruta">
+                T-{{ t.idTraslado }} · {{ t.placa }}
+              </span>
+            </div>
+            <div class="small text-muted mt-2" *ngIf="o.usuario">Generada por {{ o.usuario }}<span *ngIf="o.usuarioGenera"> (DNI {{ o.usuarioGenera }})</span> · {{ o.fechaGeneracion | date:'dd/MM/yyyy HH:mm' }}</div>
+            <div class="small text-muted" *ngIf="o.fechaMigracion">Migrada el {{ o.fechaMigracion | date:'dd/MM/yyyy HH:mm' }} · {{ o.intentos }} intento(s)</div>
+            <div class="small mt-1" *ngIf="o.numeroOSSpring"><b class="text-primary">SPRING: {{ o.numeroOSSpring }}</b><span *ngIf="o.estadoLogistica"> · {{ o.estadoLogistica }}</span></div>
+            <div class="small text-muted mt-1" *ngIf="o.estado === 'MIGRADA' && !o.numeroOSSpring">Aún sin número SPRING — pendiente de sincronización en logística</div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+  <ng-template #emptymessage>
+    <tr><td colspan="11" class="text-center text-muted">Sin órdenes de servicio en el período — use "Generar OS"</td></tr>
+  </ng-template>
+</p-table>

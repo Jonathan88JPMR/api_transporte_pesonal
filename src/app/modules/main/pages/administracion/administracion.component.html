@@ -1,0 +1,156 @@
+<div class="page-header mb-3"><h5>Administración de transporte</h5></div>
+    <ul class="nav custom-tabs mb-3" role="tablist">
+      <li class="nav-item" role="presentation" *ngFor="let e of entidades">
+        <button class="nav-link" [class.active]="entidad === e.valor" type="button" role="tab" (click)="cambiarEntidad(e.valor)">
+          <i class="bx {{ e.icon }}"></i>{{ e.etiqueta }}
+        </button>
+      </li>
+    </ul>
+    <div class="card mb-3" *ngIf="entidad !== 'AUDITORIA'"><div class="card-body">
+      <div class="row g-2">
+        <ng-container *ngIf="entidad === 'USUARIO'">
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.usuario" placeholder="Usuario" [disabled]="!!form.id" autocomplete="off" /></div>
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.nombre" placeholder="Nombre" autocomplete="off" /></div>
+          <div class="col-md-1"><input class="form-control" [(ngModel)]="form.dni" placeholder="DNI" maxlength="15" autocomplete="off" /></div>
+          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idrol"><option *ngFor="let r of rolesForm" [value]="r.valor">{{ r.etiqueta }}</option></select></div>
+          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idArea"><option [ngValue]="null">Sin área</option><option *ngFor="let a of areas" [ngValue]="a.idArea">{{ a.nombre }}</option></select></div>
+          <div class="col-md-2"><input type="password" class="form-control" [(ngModel)]="form.clave" placeholder="Clave" autocomplete="new-password" /></div>
+        </ng-container>
+        <ng-container *ngIf="entidad === 'CONDUCTOR'">
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.usuario" placeholder="Usuario" [disabled]="!!form.id" autocomplete="off" /></div>
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.nombre" placeholder="Nombre" autocomplete="off" /></div>
+          <div class="col-md-1"><input class="form-control" [(ngModel)]="form.dni" placeholder="DNI" maxlength="15" autocomplete="off" /></div>
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.placa" placeholder="Placa conductor" autocomplete="off" /></div>
+          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idArea"><option [ngValue]="null">Sin área</option><option *ngFor="let a of areas" [ngValue]="a.idArea">{{ a.nombre }}</option></select></div>
+          <div class="col-md-2"><input type="password" class="form-control" [(ngModel)]="form.clave" placeholder="Clave" autocomplete="new-password" /></div>
+        </ng-container>
+        <!-- Unidad de la flota: propia (sin transportista, con conductor y estado
+             operativo) o de tercero (exige transportista para la OS) -->
+        <ng-container *ngIf="entidad === 'UNIDAD'">
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.placa" placeholder="Placa" /></div>
+          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.tipoPropiedad" title="Propiedad">
+            <option value="PROPIA">Propia</option><option value="TERCERO">Tercero</option></select></div>
+          <!-- el tipo sale del catálogo TP_TIPOS_VEHICULO (tab Tipos vehículo) -->
+          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.tipoVehiculo" title="Tipo de vehículo">
+            <option [ngValue]="null">Tipo…</option>
+            <option *ngFor="let t of tiposVehiculo" [ngValue]="t.nombre">{{ t.nombre }}</option></select></div>
+          <div class="col-md-1"><input type="number" min="1" class="form-control" [(ngModel)]="form.capacidad" placeholder="Capac." title="Capacidad" /></div>
+          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.estadoOperativo" title="Estado operativo">
+            <option value="OPERATIVA">Operativa</option><option value="MANTENIMIENTO">Mantenimiento</option>
+            <option value="FUERA_SERVICIO">Fuera de servicio</option></select></div>
+          <div class="col-md-3"><select class="form-select" [(ngModel)]="form.idConductor" title="Conductor asignado">
+            <option [ngValue]="null">Sin conductor asignado</option>
+            <option *ngFor="let c of conductores" [ngValue]="c.idUsuario">{{ c.nombre }}</option></select></div>
+        </ng-container>
+        <ng-container *ngIf="entidad === 'UNIDAD'">
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.marca" placeholder="Marca" /></div>
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.modelo" placeholder="Modelo" /></div>
+          <div class="col-md-1"><input type="number" min="1990" max="2100" class="form-control" [(ngModel)]="form.anio" placeholder="Año" /></div>
+          <div class="col-md-5" *ngIf="form.tipoPropiedad === 'TERCERO'"><select class="form-select" [(ngModel)]="form.idTransportista"><option [ngValue]="null">Transportista (obligatorio para tercero)</option><option *ngFor="let t of transportistas" [ngValue]="t.idTransportista">{{ t.razonSocial }} ({{ t.ruc }})</option></select></div>
+        </ng-container>
+        <!-- Comunicado: rango de horas sin servicio — bloquea nuevas solicitudes -->
+        <ng-container *ngIf="entidad === 'COMUNICADO'">
+          <div class="col-md-3"><input class="form-control" [(ngModel)]="form.titulo" placeholder="Título del comunicado" /></div>
+          <div class="col-md-2"><input type="date" class="form-control" [(ngModel)]="form.fecha" title="Día afectado" /></div>
+          <div class="col-md-2"><input type="time" class="form-control" [(ngModel)]="form.horaInicio" title="Desde" /></div>
+          <div class="col-md-2"><input type="time" class="form-control" [(ngModel)]="form.horaFin" title="Hasta" /></div>
+          <div class="col-md-3"><input class="form-control" [(ngModel)]="form.motivoActividad" placeholder="Actividad (capacitación, mantenimiento…)" /></div>
+        </ng-container>
+        <ng-container *ngIf="entidad === 'COMUNICADO'">
+          <div class="col-md-3"><select class="form-select" [(ngModel)]="form.unidades" title="Unidades ocupadas">
+            <option [ngValue]="null">Todas las unidades ocupadas</option>
+            <option *ngFor="let u of unidades" [ngValue]="u.placa">{{ u.placa }}</option></select></div>
+          <div class="col-md-7"><input class="form-control" [(ngModel)]="form.mensaje" placeholder="Mensaje que verán los supervisores (ej. no se podrán crear solicitudes de 10:00 a 12:00)" /></div>
+        </ng-container>
+        <ng-container *ngIf="entidad === 'TRANSPORTISTA'">
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.ruc" placeholder="RUC" maxlength="11" /></div>
+          <div class="col-md-4"><input class="form-control" [(ngModel)]="form.razonSocial" placeholder="Razón social" /></div>
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.telefono" placeholder="Teléfono" /></div>
+          <div class="col-md-3"><input class="form-control" [(ngModel)]="form.email" placeholder="Email" /></div>
+        </ng-container>
+        <ng-container *ngIf="entidad === 'TARIFA'">
+          <div class="col-md-3"><select class="form-select" [(ngModel)]="form.idTransportista"><option [ngValue]="null">Transportista…</option><option *ngFor="let t of transportistas" [ngValue]="t.idTransportista">{{ t.razonSocial }}</option></select></div>
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.puntoOrigen" placeholder="Origen (vacío = todas)" /></div>
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.puntoDestino" placeholder="Destino (vacío = todos)" /></div>
+          <div class="col-md-2"><input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="form.monto" placeholder="Monto S/" /></div>
+          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.porPasajero"><option [ngValue]="0">Por viaje</option><option [ngValue]="1">Por pasajero</option></select></div>
+        </ng-container>
+        <ng-container *ngIf="entidad === 'CECO'">
+          <div class="col-md-1"><input class="form-control" [(ngModel)]="form.ceco" placeholder="CeCo" /></div>
+          <div class="col-md-1"><input class="form-control" [(ngModel)]="form.cuenta" placeholder="Cuenta" /></div>
+          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.idproyecto" placeholder="Proyecto" /></div>
+          <div class="col-md-1"><input class="form-control" [(ngModel)]="form.codfundo" placeholder="Fundo" /></div>
+          <div class="col-md-1"><input class="form-control" [(ngModel)]="form.idcultivo" placeholder="Cultivo" /></div>
+          <div class="col-md-1"><input class="form-control" [(ngModel)]="form.idlabor" placeholder="Labor" /></div>
+          <div class="col-md-3"><input class="form-control" [(ngModel)]="form.descripcion" placeholder="Descripción" /></div>
+        </ng-container>
+        <ng-container *ngIf="entidad === 'PUNTO' || entidad === 'MOTIVO' || entidad === 'AREA' || entidad === 'TIPO_VEHICULO'">
+          <div [class.col-md-8]="entidad !== 'PUNTO'" [class.col-md-4]="entidad === 'PUNTO'"><input class="form-control" [(ngModel)]="form.nombre" [placeholder]="entidad === 'TIPO_VEHICULO' ? 'Tipo de vehículo' : 'Nombre'" /></div>
+          <ng-container *ngIf="entidad === 'PUNTO'"><div class="col-md-2"><input type="number" step="0.000001" class="form-control" [(ngModel)]="form.latitud" placeholder="Latitud" /></div><div class="col-md-2"><input type="number" step="0.000001" class="form-control" [(ngModel)]="form.longitud" placeholder="Longitud" /></div></ng-container>
+          <ng-container *ngIf="entidad === 'AREA'">
+            <!-- Datos contables del área (imputación de la OS): solo los ve y
+                 edita el administrador — el coordinador gestiona solo el nombre -->
+            <ng-container *ngIf="!esCoordinador">
+              <div class="col-md-2"><input class="form-control" [(ngModel)]="form.ceco" placeholder="CeCo" /></div>
+              <div class="col-md-2"><input class="form-control" [(ngModel)]="form.cuenta" placeholder="Cuenta" /></div>
+              <div class="col-md-2"><input class="form-control" [(ngModel)]="form.idproyecto" placeholder="Proyecto" /></div>
+              <div class="col-md-2"><input class="form-control" [(ngModel)]="form.codfundo" placeholder="Fundo" /></div>
+              <div class="col-md-1"><input class="form-control" [(ngModel)]="form.idcultivo" placeholder="Cultivo" /></div>
+              <div class="col-md-1"><input class="form-control" [(ngModel)]="form.idlabor" placeholder="Labor" /></div>
+            </ng-container>
+          </ng-container>
+        </ng-container>
+        <div class="col-md-2"><button class="btn btn-primary w-100" (click)="guardar()">{{ form.id ? 'Actualizar' : 'Crear' }}</button></div>
+        <div class="col-md-2" *ngIf="form.id"><button class="btn btn-outline-secondary w-100" (click)="limpiar()">Cancelar</button></div>
+      </div>
+    </div></div>
+    <div class="d-flex justify-content-end mb-2" *ngIf="entidad === 'USUARIO' || entidad === 'CONDUCTOR'">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="verEliminados" [(ngModel)]="verEliminados" (change)="aplicarFiltros()">
+        <label class="form-check-label text-muted small" for="verEliminados">Mostrar usuarios eliminados</label>
+      </div>
+    </div>
+    <p-table *ngIf="entidad !== 'AUDITORIA'" [value]="registros" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
+             [rowHover]="true" [showCurrentPageReport]="true"
+             currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+             styleClass="p-datatable-sm p-datatable-striped table-mobile-cards">
+      <ng-template #header>
+        <tr><th>ID</th><th *ngFor="let c of columnas()">{{ c.etiqueta }}</th><th>Estado</th><th>Acciones</th></tr>
+      </ng-template>
+      <ng-template #body let-r>
+        <tr [style.text-decoration]="r.eliminado ? 'line-through' : null" [style.opacity]="r.eliminado ? '0.6' : null">
+          <td data-label="ID">{{ idRegistro(r) }}</td>
+          <td *ngFor="let c of columnas()" [attr.data-label]="c.etiqueta">{{ c.campo === 'idrol' ? (roles[r.idrol] || r.idrol) : c.campo === 'porPasajero' ? (r.porPasajero ? 'Por pasajero' : 'Por viaje') : c.campo === 'vigente' ? (r.vigente ? 'AHORA' : '—') : c.campo === 'horario' ? (r.horaInicio + ' - ' + r.horaFin) : c.campo === 'estadoOperativo' ? (estadoOp[r.estadoOperativo] || r.estadoOperativo) : r[c.campo] }}</td>
+          <td data-label="Estado"><p-tag [value]="estadoRegistro(r).texto" [severity]="estadoRegistro(r).severidad"></p-tag></td>
+          <td data-label="Acciones"><div class="d-flex gap-1 align-items-center justify-content-center">
+            <button *ngIf="!r.eliminado && puedeGestionar(r)" class="btn btn-sm btn-outline-primary" (click)="editar(r)" pTooltip="Editar" tooltipPosition="top"><i class="pi pi-pencil"></i><span class="accion-label">Editar</span></button>
+            <button *ngIf="!r.eliminado && esUsuario() && puedeGestionar(r)" class="btn btn-sm" [class.btn-outline-success]="!r.activo" [class.btn-outline-warning]="r.activo" (click)="alternarActivo(r)" [pTooltip]="r.activo ? 'Desactivar (no podrá iniciar sesión)' : 'Activar'" tooltipPosition="top"><i class="pi" [class.pi-check-circle]="!r.activo" [class.pi-ban]="r.activo"></i><span class="accion-label">{{ r.activo ? 'Desactivar' : 'Activar' }}</span></button>
+            <button *ngIf="!r.eliminado && esUsuario() && puedeGestionar(r)" class="btn btn-sm btn-outline-danger" (click)="eliminar(r)" pTooltip="Eliminar (borrado lógico)" tooltipPosition="top"><i class="pi pi-trash"></i><span class="accion-label">Eliminar</span></button>
+            <button *ngIf="!r.eliminado && !esUsuario() && puedeGestionar(r)" class="btn btn-sm btn-outline-danger" (click)="eliminar(r)" pTooltip="Desactivar" tooltipPosition="top"><i class="pi pi-ban"></i><span class="accion-label">Desactivar</span></button>
+          </div></td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage>
+        <tr><td colspan="20" class="text-center text-muted">Sin registros</td></tr>
+      </ng-template>
+    </p-table>
+    <p-table *ngIf="entidad === 'AUDITORIA'" [value]="auditoria" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
+             [rowHover]="true" [showCurrentPageReport]="true"
+             currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+             styleClass="p-datatable-sm p-datatable-striped table-mobile-cards">
+      <ng-template #header>
+        <tr><th>Fecha</th><th>Entidad</th><th>Acción</th><th>Usuario</th><th>Detalle</th></tr>
+      </ng-template>
+      <ng-template #body let-a>
+        <tr>
+          <td data-label="Fecha">{{ a.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td data-label="Entidad">{{ a.entidad }}<span *ngIf="a.idEntidad"> #{{ a.idEntidad }}</span></td>
+          <td data-label="Acción">{{ a.accion }}</td>
+          <td data-label="Usuario">{{ a.usuario }}</td>
+          <td data-label="Detalle" class="text-truncate" style="max-width: 280px" [title]="a.detalle">{{ a.detalle }}</td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage>
+        <tr><td colspan="5" class="text-center text-muted">Sin registros</td></tr>
+      </ng-template>
+    </p-table>

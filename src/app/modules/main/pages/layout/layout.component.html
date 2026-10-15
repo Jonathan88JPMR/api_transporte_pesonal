@@ -127,3 +127,8 @@
     </div>
   </div>
 </div>
+
+<!-- Alerta de comunicado "sin servicio": modal bloqueante que se abre ni bien
+     ingresa el usuario si hay un rango sin servicio vigente (y se re-evalúa
+     cada 30 s junto con las notificaciones). Solo se cierra con "Entendido". -->
+<app-comunicado-modal [comunicado]="comunicadoVigente" [(visible)]="mostrarComunicado"></app-comunicado-modal>

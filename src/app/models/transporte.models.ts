@@ -125,11 +125,20 @@ export interface AsignacionUnidad {
 export interface IndicadoresReporte {
   totalSolicitudes: number;
   totalPersonas: number;
+  personasReales?: number;
   totalRealizados: number;
+  totalAnulados?: number;
   totalEmergencias: number;
+  cumplimientoPorcentaje?: number;
   tiempoPromedioMinutos?: number;
   esperaPromedioMinutos?: number;
   puntualidadPorcentaje?: number;
+  porMotivo?: { motivo: string; viajes: number; personas: number; personasReales: number; porcentaje: number }[];
+  porIntervalo?: { intervalo: string; viajes: number; personas: number }[];
+  porFecha?: { fecha: string; viajes: number; personas: number }[];
+  porEstado?: { realizados: string; viajes: number }[];
+  porSemana?: { semana: string; viajes: number; personas: number }[];
+  porMes?: { mes: string; viajes: number; personas: number }[];
   unidades: { placa: string; viajes: number; personas: number; ocupacionPorcentaje: number }[];
   areas: { area: string; solicitudes: number; personas: number }[];
   conductores?: { conductor: string; placa: string; servicios: number; personas: number }[];

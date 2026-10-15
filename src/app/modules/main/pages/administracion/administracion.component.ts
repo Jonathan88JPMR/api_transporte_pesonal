@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { TransporteService } from '../../services/transporte.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
@@ -10,127 +11,135 @@ import { Auditoria } from '@/app/models/transporte.models';
 @Component({
   selector: 'app-administracion',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableModule, TooltipModule],
-  template: `
-    <div class="page-header mb-3"><h5>Administración de transporte</h5></div>
-    <ul class="nav custom-tabs mb-3" role="tablist">
-      <li class="nav-item" role="presentation" *ngFor="let e of entidades">
-        <button class="nav-link" [class.active]="entidad === e.valor" type="button" role="tab" (click)="cambiarEntidad(e.valor)">
-          <i class="bx {{ e.icon }}"></i>{{ e.etiqueta }}
-        </button>
-      </li>
-    </ul>
-    <div class="card mb-3" *ngIf="entidad !== 'AUDITORIA'"><div class="card-body">
-      <div class="row g-2">
-        <ng-container *ngIf="entidad === 'USUARIO'">
-          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.usuario" placeholder="Usuario" [disabled]="!!form.id" /></div>
-          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.nombre" placeholder="Nombre" /></div>
-          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idrol"><option value="SPTRANS">Supervisor</option><option value="COTRANS">Coordinador</option><option value="ADTRANS">Administrador</option></select></div>
-          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idArea"><option [ngValue]="null">Sin área</option><option *ngFor="let a of areas" [ngValue]="a.idArea">{{ a.nombre }}</option></select></div>
-          <div class="col-md-2"><input type="password" class="form-control" [(ngModel)]="form.clave" placeholder="Clave" /></div>
-        </ng-container>
-        <ng-container *ngIf="entidad === 'CONDUCTOR'">
-          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.usuario" placeholder="Usuario" [disabled]="!!form.id" /></div>
-          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.nombre" placeholder="Nombre" /></div>
-          <div class="col-md-2"><input class="form-control" [(ngModel)]="form.placa" placeholder="Placa conductor" /></div>
-          <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idArea"><option [ngValue]="null">Sin área</option><option *ngFor="let a of areas" [ngValue]="a.idArea">{{ a.nombre }}</option></select></div>
-          <div class="col-md-2"><input type="password" class="form-control" [(ngModel)]="form.clave" placeholder="Clave" /></div>
-        </ng-container>
-        <ng-container *ngIf="entidad === 'UNIDAD'">
-          <div class="col-md-4"><input class="form-control" [(ngModel)]="form.placa" placeholder="Placa" /></div>
-          <div class="col-md-4"><input type="number" min="1" class="form-control" [(ngModel)]="form.capacidad" placeholder="Capacidad" /></div>
-        </ng-container>
-        <ng-container *ngIf="entidad === 'PUNTO' || entidad === 'MOTIVO' || entidad === 'AREA'">
-          <div [class.col-md-8]="entidad !== 'PUNTO'" [class.col-md-4]="entidad === 'PUNTO'"><input class="form-control" [(ngModel)]="form.nombre" placeholder="Nombre" /></div>
-          <ng-container *ngIf="entidad === 'PUNTO'"><div class="col-md-2"><input type="number" step="0.000001" class="form-control" [(ngModel)]="form.latitud" placeholder="Latitud" /></div><div class="col-md-2"><input type="number" step="0.000001" class="form-control" [(ngModel)]="form.longitud" placeholder="Longitud" /></div></ng-container>
-        </ng-container>
-        <div class="col-md-2"><button class="btn btn-primary w-100" (click)="guardar()">{{ form.id ? 'Actualizar' : 'Crear' }}</button></div>
-        <div class="col-md-2" *ngIf="form.id"><button class="btn btn-outline-secondary w-100" (click)="limpiar()">Cancelar</button></div>
-      </div>
-    </div></div>
-    <p-table *ngIf="entidad !== 'AUDITORIA'" [value]="registros" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
-             [rowHover]="true" [showCurrentPageReport]="true"
-             currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
-             styleClass="p-datatable-sm p-datatable-striped table-mobile-cards">
-      <ng-template #header>
-        <tr><th>ID</th><th *ngFor="let c of columnas()">{{ c.etiqueta }}</th><th>Estado</th><th>Acciones</th></tr>
-      </ng-template>
-      <ng-template #body let-r>
-        <tr>
-          <td data-label="ID">{{ idRegistro(r) }}</td>
-          <td *ngFor="let c of columnas()" [attr.data-label]="c.etiqueta">{{ c.campo === 'idrol' ? (roles[r.idrol] || r.idrol) : r[c.campo] }}</td>
-          <td data-label="Estado">{{ r.activo === false ? 'INACTIVO' : 'ACTIVO' }}</td>
-          <td data-label="Acciones"><div class="d-flex gap-1 align-items-center justify-content-center"><button class="btn btn-sm btn-outline-primary" (click)="editar(r)" pTooltip="Editar" tooltipPosition="top"><i class="pi pi-pencil"></i><span class="accion-label">Editar</span></button><button class="btn btn-sm btn-outline-danger" (click)="eliminar(r)" pTooltip="Desactivar" tooltipPosition="top"><i class="pi pi-ban"></i><span class="accion-label">Desactivar</span></button></div></td>
-        </tr>
-      </ng-template>
-      <ng-template #emptymessage>
-        <tr><td colspan="20" class="text-center text-muted">Sin registros</td></tr>
-      </ng-template>
-    </p-table>
-    <p-table *ngIf="entidad === 'AUDITORIA'" [value]="auditoria" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
-             [rowHover]="true" [showCurrentPageReport]="true"
-             currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
-             styleClass="p-datatable-sm p-datatable-striped table-mobile-cards">
-      <ng-template #header>
-        <tr><th>Fecha</th><th>Entidad</th><th>Acción</th><th>Usuario</th><th>Detalle</th></tr>
-      </ng-template>
-      <ng-template #body let-a>
-        <tr>
-          <td data-label="Fecha">{{ a.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
-          <td data-label="Entidad">{{ a.entidad }}<span *ngIf="a.idEntidad"> #{{ a.idEntidad }}</span></td>
-          <td data-label="Acción">{{ a.accion }}</td>
-          <td data-label="Usuario">{{ a.usuario }}</td>
-          <td data-label="Detalle" class="text-truncate" style="max-width: 280px" [title]="a.detalle">{{ a.detalle }}</td>
-        </tr>
-      </ng-template>
-      <ng-template #emptymessage>
-        <tr><td colspan="5" class="text-center text-muted">Sin registros</td></tr>
-      </ng-template>
-    </p-table>
-  `
+  imports: [CommonModule, FormsModule, TableModule, TagModule, TooltipModule],
+  templateUrl: './administracion.component.html',
+  styleUrl: './administracion.component.scss'
 })
+
 export class AdministracionComponent implements OnInit {
-  entidades = [{ valor: 'USUARIO', etiqueta: 'Usuarios', icon: 'bx-user' }, { valor: 'CONDUCTOR', etiqueta: 'Conductores', icon: 'bx-id-card' }, { valor: 'UNIDAD', etiqueta: 'Unidades', icon: 'bx-bus' }, { valor: 'PUNTO', etiqueta: 'Puntos', icon: 'bx-map-pin' }, { valor: 'MOTIVO', etiqueta: 'Motivos', icon: 'bx-list-check' }, { valor: 'AREA', etiqueta: 'Áreas', icon: 'bx-buildings' }, { valor: 'AUDITORIA', etiqueta: 'Auditoría', icon: 'bx-history' }];
-  entidad: 'USUARIO' | 'CONDUCTOR' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' | 'AUDITORIA' = 'USUARIO';
+  // Tabs ocultos por ahora (flota 100% propia): TRANSPORTISTA, TARIFA y CECO
+  // son catálogos del flujo de OS con terceros. El código del mantenedor se
+  // conserva (formulario, columnas y SP) por si vuelven unidades de terceros.
+  private todasLasEntidades = [{ valor: 'USUARIO', etiqueta: 'Usuarios', icon: 'bx-user' }, { valor: 'CONDUCTOR', etiqueta: 'Conductores', icon: 'bx-id-card' }, { valor: 'UNIDAD', etiqueta: 'Unidades', icon: 'bx-bus' }, { valor: 'TIPO_VEHICULO', etiqueta: 'Tipos vehículo', icon: 'bx-car' }, { valor: 'PUNTO', etiqueta: 'Puntos', icon: 'bx-map-pin' }, { valor: 'MOTIVO', etiqueta: 'Motivos', icon: 'bx-list-check' }, { valor: 'AREA', etiqueta: 'Áreas', icon: 'bx-buildings' }, /*{ valor: 'TRANSPORTISTA', etiqueta: 'Transportistas', icon: 'bx-briefcase' }, { valor: 'TARIFA', etiqueta: 'Tarifas', icon: 'bx-dollar-circle' }, { valor: 'CECO', etiqueta: 'Centros de costo', icon: 'bx-target-lock' },*/ { valor: 'COMUNICADO', etiqueta: 'Comunicados', icon: 'bx-megaphone' }, { valor: 'AUDITORIA', etiqueta: 'Auditoría', icon: 'bx-history' }];
+  entidades: { valor: string; etiqueta: string; icon: string }[] = [];
+  entidad: 'USUARIO' | 'CONDUCTOR' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' | 'TRANSPORTISTA' | 'TARIFA' | 'CECO' | 'COMUNICADO' | 'AUDITORIA' | 'TIPO_VEHICULO' = 'USUARIO';
   registros: any[] = [];
+  registrosTodos: any[] = [];
   auditoria: Auditoria[] = [];
   areas: { idArea: number; nombre: string }[] = [];
+  transportistas: { idTransportista: number; razonSocial: string; ruc: string }[] = [];
+  conductores: { idUsuario: number; nombre: string }[] = [];
+  unidades: { placa: string }[] = [];
+  tiposVehiculo: { idTipoVehiculo: number; nombre: string }[] = [];
   form: any = {};
+  verEliminados = false;
+  rolActual = '';
   roles: Record<string, string> = { SPTRANS: 'Supervisor', COTRANS: 'Coordinador', CHTRANS: 'Conductor', ADTRANS: 'Administrador' };
+  estadoOp: Record<string, string> = { OPERATIVA: 'Operativa', MANTENIMIENTO: 'Mantenimiento', FUERA_SERVICIO: 'Fuera de servicio' };
+  rolesForm: { valor: string; etiqueta: string }[] = [];
 
   constructor(private service: TransporteService, private alerts: AlertService) {}
 
-  async ngOnInit() { await Promise.all([this.cargar(), this.cargarAreas()]); }
+  get esCoordinador(): boolean { return this.rolActual === 'COTRANS'; }
+
+  async ngOnInit() {
+    try { this.rolActual = JSON.parse(localStorage.getItem('usuario') ?? '{}').idrol ?? ''; } catch { }
+    // el coordinador mantiene usuarios, conductores, áreas, unidades (incluye
+    // asignar el conductor de cada unidad), puntos de ruta y comunicados
+    this.entidades = this.esCoordinador
+      ? this.todasLasEntidades.filter(e => ['USUARIO', 'CONDUCTOR', 'AREA', 'UNIDAD', 'TIPO_VEHICULO', 'PUNTO', 'COMUNICADO'].includes(e.valor))
+      : this.todasLasEntidades;
+    this.rolesForm = this.esCoordinador
+      ? [{ valor: 'SPTRANS', etiqueta: 'Supervisor' }]
+      : [{ valor: 'SPTRANS', etiqueta: 'Supervisor' }, { valor: 'COTRANS', etiqueta: 'Coordinador' }, { valor: 'ADTRANS', etiqueta: 'Administrador' }];
+    await Promise.all([this.cargar(), this.cargarAreas(), this.cargarTransportistas(), this.cargarConductores(), this.cargarUnidades(), this.cargarTiposVehiculo()]);
+  }
   async cambiarEntidad(entidad: any) { this.entidad = entidad; this.limpiar(); await this.cargar(); }
-  entidadApi(): 'USUARIO' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' { return (this.entidad === 'CONDUCTOR' || this.entidad === 'AUDITORIA') ? 'USUARIO' : this.entidad; }
-  async cargarAreas() { this.areas = (await this.service.administrarCatalogo('AREA', 'LISTAR')).filter(a => a.activo !== false); }
+  entidadApi(): 'USUARIO' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' | 'TRANSPORTISTA' | 'TARIFA' | 'CECO' | 'TIPO_VEHICULO' { return (this.entidad === 'CONDUCTOR' || this.entidad === 'AUDITORIA' || this.entidad === 'COMUNICADO') ? 'USUARIO' : this.entidad; }
+  esUsuario(): boolean { return this.entidad === 'USUARIO' || this.entidad === 'CONDUCTOR'; }
+  // el coordinador solo puede tocar conductores y supervisores (el SP también lo valida)
+  puedeGestionar(r: any): boolean { return !this.esCoordinador || r.idrol === 'CHTRANS' || r.idrol === 'SPTRANS' || r.idrol === undefined; }
+  estadoRegistro(r: any): { texto: string; severidad: 'success' | 'warn' | 'danger' | 'secondary' } {
+    if (r.eliminado) return { texto: 'ELIMINADO', severidad: 'danger' };
+    return r.activo === false ? { texto: 'INACTIVO', severidad: 'secondary' } : { texto: 'ACTIVO', severidad: 'success' };
+  }
+  async cargarAreas() { try { this.areas = (await this.service.administrarCatalogo('AREA', 'LISTAR')).filter(a => a.activo !== false); } catch { } }
+  async cargarTransportistas() { try { this.transportistas = (await this.service.administrarCatalogo('TRANSPORTISTA', 'LISTAR')).filter(t => t.activo !== false); } catch { } }
+  async cargarConductores() { try { this.conductores = (await this.service.administrarCatalogo('USUARIO', 'LISTAR')).filter(u => u.idrol === 'CHTRANS' && u.activo !== false && !u.eliminado); } catch { } }
+  async cargarUnidades() { try { this.unidades = (await this.service.administrarCatalogo('UNIDAD', 'LISTAR')).filter(u => u.activo !== false); } catch { } }
+  // catálogo que alimenta el select "Tipo de vehículo" del mantenedor de unidades
+  async cargarTiposVehiculo() { try { this.tiposVehiculo = (await this.service.administrarCatalogo('TIPO_VEHICULO', 'LISTAR')).filter(t => t.activo !== false); } catch { } }
   async cargar() {
     if (this.entidad === 'AUDITORIA') { this.auditoria = await this.service.listarAuditoria(); return; }
+    if (this.entidad === 'COMUNICADO') { this.registrosTodos = await this.service.listarComunicados(); this.aplicarFiltros(); return; }
     const datos = await this.service.administrarCatalogo(this.entidadApi(), 'LISTAR');
-    this.registros = this.entidad === 'USUARIO' ? datos.filter(r => r.idrol !== 'CHTRANS')
+    this.registrosTodos = this.entidad === 'USUARIO' ? datos.filter(r => r.idrol !== 'CHTRANS')
       : this.entidad === 'CONDUCTOR' ? datos.filter(r => r.idrol === 'CHTRANS') : datos;
+    this.aplicarFiltros();
   }
-  limpiar() { this.form = this.entidad === 'UNIDAD' ? { capacidad: 15 } : this.entidad === 'USUARIO' ? { idrol: 'SPTRANS' } : this.entidad === 'CONDUCTOR' ? { idrol: 'CHTRANS' } : {}; }
+  aplicarFiltros() {
+    this.registros = this.verEliminados ? this.registrosTodos : this.registrosTodos.filter(r => !r.eliminado);
+  }
+  limpiar() {
+    this.form = this.entidad === 'UNIDAD' ? { capacidad: 15, tipoPropiedad: 'PROPIA', estadoOperativo: 'OPERATIVA' }
+      : this.entidad === 'COMUNICADO' ? { fecha: new Date().toISOString().slice(0, 10) }
+      : this.entidad === 'USUARIO' ? { idrol: 'SPTRANS' }
+      : this.entidad === 'CONDUCTOR' ? { idrol: 'CHTRANS' } : {};
+  }
   columnas(): { etiqueta: string; campo: string }[] {
     switch (this.entidad) {
-      case 'USUARIO': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Usuario', campo: 'usuario' }, { etiqueta: 'Rol', campo: 'idrol' }, { etiqueta: 'Área', campo: 'area' }];
-      case 'CONDUCTOR': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Usuario', campo: 'usuario' }, { etiqueta: 'Placa', campo: 'placa' }, { etiqueta: 'Área', campo: 'area' }];
-      case 'UNIDAD': return [{ etiqueta: 'Placa', campo: 'placa' }, { etiqueta: 'Capacidad', campo: 'capacidad' }];
+      case 'USUARIO': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Usuario', campo: 'usuario' }, { etiqueta: 'DNI', campo: 'dni' }, { etiqueta: 'Rol', campo: 'idrol' }, { etiqueta: 'Área', campo: 'area' }];
+      case 'CONDUCTOR': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Usuario', campo: 'usuario' }, { etiqueta: 'DNI', campo: 'dni' }, { etiqueta: 'Placa', campo: 'placa' }, { etiqueta: 'Área', campo: 'area' }];
+      case 'UNIDAD': return [{ etiqueta: 'Placa', campo: 'placa' }, { etiqueta: 'Propiedad', campo: 'tipoPropiedad' }, { etiqueta: 'Vehículo', campo: 'tipoVehiculo' }, { etiqueta: 'Capacidad', campo: 'capacidad' }, { etiqueta: 'Conductor', campo: 'conductor' }, { etiqueta: 'Estado', campo: 'estadoOperativo' }/*, { etiqueta: 'Transportista', campo: 'transportista' }*/];
+      case 'COMUNICADO': return [{ etiqueta: 'Título', campo: 'titulo' }, { etiqueta: 'Fecha', campo: 'fecha' }, { etiqueta: 'Horario', campo: 'horario' }, { etiqueta: 'Unidades', campo: 'unidades' }, { etiqueta: 'Actividad', campo: 'motivoActividad' }, { etiqueta: 'Vigente', campo: 'vigente' }];
       case 'PUNTO': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Latitud', campo: 'latitud' }, { etiqueta: 'Longitud', campo: 'longitud' }];
+      // al coordinador el tab Áreas le muestra solo Nombre + Estado; las
+      // columnas contables (ceco/cuenta/proyecto) son exclusivas del admin
+      case 'AREA': return this.esCoordinador
+        ? [{ etiqueta: 'Nombre', campo: 'nombre' }]
+        : [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'CeCo', campo: 'ceco' }, { etiqueta: 'Cuenta', campo: 'cuenta' }, { etiqueta: 'Proyecto', campo: 'idproyecto' }];
+      case 'TRANSPORTISTA': return [{ etiqueta: 'RUC', campo: 'ruc' }, { etiqueta: 'Razón social', campo: 'razonSocial' }, { etiqueta: 'Teléfono', campo: 'telefono' }, { etiqueta: 'Email', campo: 'email' }];
+      case 'TARIFA': return [{ etiqueta: 'Transportista', campo: 'transportista' }, { etiqueta: 'Origen', campo: 'puntoOrigen' }, { etiqueta: 'Destino', campo: 'puntoDestino' }, { etiqueta: 'Monto', campo: 'monto' }, { etiqueta: 'Tipo', campo: 'porPasajero' }];
+      case 'CECO': return [{ etiqueta: 'CeCo', campo: 'ceco' }, { etiqueta: 'Cuenta', campo: 'cuenta' }, { etiqueta: 'Proyecto', campo: 'idproyecto' }, { etiqueta: 'Fundo', campo: 'codfundo' }, { etiqueta: 'Cultivo', campo: 'idcultivo' }, { etiqueta: 'Labor', campo: 'idlabor' }, { etiqueta: 'Descripción', campo: 'descripcion' }];
       default: return [{ etiqueta: 'Nombre', campo: 'nombre' }];
     }
   }
-  idRegistro(r: any) { return r.idUsuario ?? r.idUnidad ?? r.idPunto ?? r.idMotivo ?? r.idArea; }
+  idRegistro(r: any) { return r.idUsuario ?? r.idUnidad ?? r.idPunto ?? r.idMotivo ?? r.idArea ?? r.idTransportista ?? r.idTarifa ?? r.idCeco ?? r.idComunicado ?? r.idTipoVehiculo; }
   editar(r: any) { this.form = { ...r, id: this.idRegistro(r), clave: '' }; }
   async guardar() {
     const datos = { ...this.form };
     if (this.entidad === 'CONDUCTOR') datos.idrol = 'CHTRANS';
-    try { await this.service.administrarCatalogo(this.entidadApi(), 'GUARDAR', datos); this.limpiar(); await this.cargar(); }
-    catch { this.alerts.showAlert('error', 'No se pudo guardar el registro', 'Error'); }
+    try {
+      if (this.entidad === 'COMUNICADO') await this.service.guardarComunicado(datos);
+      else await this.service.administrarCatalogo(this.entidadApi(), 'GUARDAR', datos);
+      this.limpiar(); await this.cargar();
+    }
+    catch (e) { this.alerts.showAlert('warning', this.mensajeError(e, 'No se pudo guardar el registro'), 'Aviso'); }
+  }
+  async alternarActivo(r: any) {
+    const activar = r.activo === false;
+    const accion = activar ? 'activar' : 'desactivar';
+    if (!await this.alerts.confirm(activar ? 'Activar' : 'Desactivar', `¿Desea ${accion} a ${r.nombre}? ${activar ? 'Podrá iniciar sesión.' : 'No podrá iniciar sesión.'}`)) return;
+    try {
+      await this.service.administrarCatalogo(this.entidadApi(), 'GUARDAR', { ...r, id: this.idRegistro(r), activo: activar ? 1 : 0 });
+      await this.cargar();
+    } catch (e) { this.alerts.showAlert('warning', this.mensajeError(e, 'No se pudo cambiar el estado'), 'Aviso'); }
   }
   async eliminar(r: any) {
-    if (!await this.alerts.confirm('Desactivar', '¿Desea desactivar este registro?')) return;
-    await this.service.administrarCatalogo(this.entidadApi(), 'ELIMINAR', { id: this.idRegistro(r) });
-    await this.cargar();
+    const esUsuario = this.esUsuario();
+    const texto = esUsuario
+      ? `¿Desea eliminar a ${r.nombre}? Es un borrado lógico: no podrá iniciar sesión pero su historial se conserva.`
+      : this.entidad === 'COMUNICADO'
+        ? `¿Desea desactivar el comunicado "${r.titulo}"? Las solicitudes volverán a admitirse en su rango.`
+        : '¿Desea desactivar este registro?';
+    if (!await this.alerts.confirm(esUsuario ? 'Eliminar usuario' : 'Desactivar', texto)) return;
+    try {
+      if (this.entidad === 'COMUNICADO') await this.service.eliminarComunicado(this.idRegistro(r));
+      else await this.service.administrarCatalogo(this.entidadApi(), 'ELIMINAR', { id: this.idRegistro(r) });
+      await this.cargar();
+    } catch (e) { this.alerts.showAlert('warning', this.mensajeError(e, 'No se pudo eliminar'), 'Aviso'); }
+  }
+  private mensajeError(e: any, fallback: string): string {
+    return e?.error?.mensaje ?? e?.mensaje ?? fallback;
   }
 }

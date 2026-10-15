@@ -10,12 +10,15 @@ import { TransporteService } from '../../services/transporte.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
 import { AuthService } from '@/app/modules/auth/services/auth.service';
 import { EstadoParada, Parada, PosicionGeo, Punto, Solicitud, Unidad, Usuario } from '@/app/models/transporte.models';
-import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
+// MapaComponent se reimporta cuando se reactive el mapa (oculto en el HTML)
+//import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
+import { PuntoMapa } from '@/app/shared/mapa/mapa.component';
 
 @Component({
   selector: 'app-conductor',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableModule, TagModule, ButtonModule, TooltipModule, SelectModule, MapaComponent],
+  // imports: [CommonModule, FormsModule, TableModule, TagModule, ButtonModule, TooltipModule, SelectModule, MapaComponent],
+  imports: [CommonModule, FormsModule, TableModule, TagModule, ButtonModule, TooltipModule, SelectModule],
   templateUrl: './conductor.component.html',
   styleUrl: './conductor.component.scss'
 })
@@ -178,6 +181,17 @@ export class ConductorComponent implements OnInit, OnDestroy {
 
   get paradasMapa(): Parada[] {
     return this.paradasOrdenadas(this.servicioMapa);
+  }
+
+  // Tipo de punto en la ruta programada: primera parada = partida,
+  // última = llegada, intermedias (e imprevistas insertadas) = parada.
+  // Se compara por referencia para no depender del rowIndex paginado.
+  tipoParada(p: Parada): { texto: string; severity: 'info' | 'secondary' | 'success' } {
+    const ps = this.paradasMapa;
+    if (ps.length === 1) return { texto: 'PARTIDA / LLEGADA', severity: 'info' };
+    if (p === ps[0]) return { texto: 'PARTIDA', severity: 'info' };
+    if (p === ps[ps.length - 1]) return { texto: 'LLEGADA', severity: 'success' };
+    return { texto: 'PARADA', severity: 'secondary' };
   }
 
   // ===== Seguimiento de paradas (checklist del conductor) =====

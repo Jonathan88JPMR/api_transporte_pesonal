@@ -12,12 +12,15 @@ import { TransporteService } from '../../services/transporte.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
 import { AuthService } from '@/app/modules/auth/services/auth.service';
 import { AsignacionUnidad, EstadoParada, Motivo, Parada, ProgresoTraslado, Punto, Solicitud, Traslado, Unidad, Usuario } from '@/app/models/transporte.models';
-import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
+// MapaComponent se reimporta cuando se reactive el mapa (oculto en el HTML)
+//import { MapaComponent, PuntoMapa } from '@/app/shared/mapa/mapa.component';
+import { PuntoMapa } from '@/app/shared/mapa/mapa.component';
 
 @Component({
   selector: 'app-coordinador',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableModule, SelectModule, ButtonModule, TagModule, CheckboxModule, TooltipModule, DialogModule, MapaComponent],
+  imports: [CommonModule, FormsModule, TableModule, SelectModule, ButtonModule, TagModule, CheckboxModule, TooltipModule, DialogModule],
+  // imports: [CommonModule, FormsModule, TableModule, SelectModule, ButtonModule, TagModule, CheckboxModule, TooltipModule, DialogModule, MapaComponent],
   templateUrl: './coordinador.component.html',
   styleUrl: './coordinador.component.scss'
 })
