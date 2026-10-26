@@ -27,6 +27,14 @@
   <button class="btn btn-sm btn-outline-secondary" *ngIf="filtroDesde || filtroHasta" (click)="limpiarFiltro()">Ver todas</button>
 </div>
 
+<!-- Unidades disponibles hoy: verde libre / ámbar parcial / rojo sin cupo -->
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2" *ngIf="unidades.length">
+  <span class="small text-muted">Unidades hoy:</span>
+  <span *ngFor="let u of unidades" class="badge" [ngClass]="claseUnidad(u)">
+    {{ u.placa }} · {{ cupoLibre(u.placa) }}/{{ u.capacidad }} libres
+  </span>
+</div>
+
 <p-table [value]="solicitudes" [loading]="cargando" [rowHover]="true"
          [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
          [showCurrentPageReport]="true"
@@ -70,11 +78,11 @@
       <td>
         <div class="d-flex gap-1 align-items-center justify-content-center">
           <button class="btn btn-sm btn-outline-primary" (click)="$event.stopPropagation(); editar(s)" pTooltip="Editar"
-                  tooltipPosition="top" *ngIf="s.estado === 'PENDIENTE'">
+                  tooltipPosition="top" *ngIf="s.estado === 'PENDIENTE' && esPropia(s)">
             <i class="pi pi-pencil"></i><span class="accion-label">Editar</span>
           </button>
           <button class="btn btn-sm btn-outline-danger" (click)="$event.stopPropagation(); anular(s)" pTooltip="Anular"
-                  tooltipPosition="top" *ngIf="(s.estado === 'PENDIENTE' || s.estado === 'ASIGNADO') && !s.realizado">
+                  tooltipPosition="top" *ngIf="(s.estado === 'PENDIENTE' || s.estado === 'ASIGNADO') && !s.realizado && esPropia(s)">
             <i class="pi pi-times"></i><span class="accion-label">Anular</span>
           </button>
         </div>
@@ -143,6 +151,16 @@
       <input id="esEmergencia" type="checkbox" class="form-check-input" formControlName="esEmergencia"
              (change)="alCambiarEmergencia(form.get('esEmergencia')?.value)" />
       <label class="form-check-label text-danger fw-semibold" for="esEmergencia">Es emergencia médica</label>
+    </div>
+    <!-- Referencia al crear: unidades disponibles y su cupo libre hoy -->
+    <div>
+      <label class="form-label mb-1">UNIDADES DISPONIBLES (hoy)</label>
+      <div class="d-flex flex-wrap gap-1">
+        <span *ngFor="let u of unidades" class="badge" [ngClass]="claseUnidad(u)">
+          {{ u.placa }} · {{ cupoLibre(u.placa) }}/{{ u.capacidad }}
+        </span>
+        <span *ngIf="!unidades.length" class="text-muted small">Sin unidades registradas</span>
+      </div>
     </div>
     <!-- Aviso de bloqueo: solo una emergencia médica puede crearse en el rango -->
     <div *ngIf="comunicadoVigente" class="alert alert-danger py-2 small mb-0">
@@ -236,7 +254,7 @@
         </ul>
       </div>
     </div>
-    <div *ngIf="detalle.estado === 'PENDIENTE' && traslados.length" class="mt-3">
+    <div *ngIf="detalle.estado === 'PENDIENTE' && esPropia(detalle) && traslados.length" class="mt-3">
       <h6>Acoplar a traslado con cupo</h6>
       <button *ngFor="let t of traslados" class="btn btn-sm btn-outline-primary me-2 mb-2" (click)="acoplar(t)">
         T-{{ t.idTraslado }} · {{ t.placa }} · {{ t.ruta }}

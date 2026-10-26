@@ -98,7 +98,8 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
   async cargar() {
     this.cargando = true;
     try {
-      // El backend filtra por área cuando quien consulta es supervisor (SPTRANS)
+      // Todos los supervisores ven las solicitudes de todas las áreas;
+      // la gestión (editar/anular/acoplar) sigue restringida a las propias
       const todas = await this.transporteService.listarSolicitudes({ usuario: this.usuario?.usuario });
       let { filtroDesde: desde, filtroHasta: hasta } = this;
       if (desde && hasta && desde > hasta) [desde, hasta] = [hasta, desde];
@@ -106,6 +107,8 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
         const f = s.fechaProgramada?.slice(0, 10) ?? '';
         return (!desde || f >= desde) && (!hasta || f <= hasta);
       });
+      // refresca el cupo del panel de unidades (por si el coordinador asignó)
+      if (this.unidades.length) void this.cargarPorciones();
     } catch {
       this.alertService.showAlert('error', 'No se pudieron cargar las solicitudes', 'Error');
     } finally {
@@ -133,16 +136,50 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
   }
 
   // Porciones de solicitudes repartidas en varias unidades (idSolicitudUnidad)
+  // + ocupación real de hoy por placa (ASIGNADO/EN_RUTA) para el panel de
+  // unidades disponibles
+  ocupaciones: Record<string, number> = {};
+
   async cargarPorciones() {
     const mapa: Record<number, { placa: string; cantidad: number; estado: string }[]> = {};
+    const ocup: Record<string, number> = {};
+    const hoy = this.fechaHoy();
     for (const { placa, servicios } of await this.transporteService.serviciosPorPlacas(this.unidades.map(u => u.placa))) {
       for (const s of servicios) {
+        if ((s.estado === 'ASIGNADO' || s.estado === 'EN_RUTA') && (s.fechaProgramada ?? '').slice(0, 10) === hoy) {
+          ocup[placa] = (ocup[placa] ?? 0) + (s.cantidad ?? 0);
+        }
         if (s.idSolicitudUnidad != null) {
           (mapa[s.idSolicitud] ??= []).push({ placa, cantidad: s.cantidad, estado: s.estado });
         }
       }
     }
     this.porciones = mapa;
+    this.ocupaciones = ocup;
+  }
+
+  // Cupo libre de hoy = capacidad - personas con servicios ASIGNADO/EN_RUTA
+  cupoLibre(placa?: string | null): number {
+    const u = this.unidades.find(x => x.placa === placa);
+    return u ? Math.max(u.capacidad - (this.ocupaciones[u.placa] ?? 0), 0) : 0;
+  }
+
+  // Verde libre / ámbar parcial / rojo sin cupo (mismo criterio que Coordinación)
+  claseUnidad(u: Unidad): string {
+    const libre = this.cupoLibre(u.placa);
+    if (libre <= 0) return 'bg-danger';
+    if (libre < u.capacidad) return 'bg-warning text-dark';
+    return 'bg-success';
+  }
+
+  // Las solicitudes de otras áreas son de solo lectura: Editar/Anular/Acoplar
+  // solo aparece en las propias (el SP de acoplar además lo valida por área)
+  esPropia(s?: Solicitud): boolean {
+    if (!s || !this.usuario) return false;
+    if (this.usuario.idrol === 'ADTRANS') return true;
+    if (this.usuario.idArea != null)
+      return s.idArea === this.usuario.idArea || (s.idArea == null && s.area === this.usuario.area);
+    return s.usuarioRegistra === this.usuario.usuario;
   }
 
   placaTexto(s: Solicitud): string {
