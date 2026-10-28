@@ -4,10 +4,10 @@
     <small class="text-muted" *ngIf="usuario?.placa">Unidad: {{ usuario!.placa }}</small>
   </div>
   <div class="d-flex gap-2 align-items-center">
-    <input type="date" class="form-control form-control-sm" style="width: auto"
+    <input type="date" class="form-control form-control-sm d-none d-md-inline-block" style="width: auto"
            [(ngModel)]="fechaFiltro" (change)="cargar()" />
-    <button class="btn btn-outline-secondary btn-sm" *ngIf="fechaFiltro" (click)="verTodas()">Todas</button>
-    <button class="btn btn-outline-secondary btn-sm" *ngIf="!fechaFiltro" (click)="verHoy()">Hoy</button>
+    <button class="btn btn-outline-secondary btn-sm d-none d-md-inline-block" *ngIf="fechaFiltro" (click)="verTodas()">Todas</button>
+    <button class="btn btn-outline-secondary btn-sm d-none d-md-inline-block" *ngIf="!fechaFiltro" (click)="verHoy()">Hoy</button>
     <button class="btn btn-outline-primary btn-sm" (click)="cargar()">
       <i class="pi pi-refresh me-1"></i> Actualizar
     </button>
@@ -33,26 +33,30 @@
       <th>CANTIDAD</th>
       <th>CUPO</th>
       <th>MOTIVO</th>
-      <th>PRIORIDAD</th>
+      <th class="d-none d-md-table-cell">PRIORIDAD</th>
       <th>ESTADO</th>
       <th>ACCIONES</th>
     </tr>
   </ng-template>
   <ng-template #body let-s>
     <tr [class.table-success]="s.realizado" [class.table-danger]="s.prioridad === 'EMERGENCIA' || s.esEmergencia">
-      <td>{{ s.fechaProgramada | date:'dd/MM' }} {{ s.horaProgramada }}</td>
+      <td><span class="d-none d-md-inline">{{ s.fechaProgramada | date:'dd/MM' }} </span>{{ s.horaProgramada }}</td>
       <td>
         {{ s.nombre }}
         <div class="small text-muted" *ngIf="s.area">{{ s.area }}</div>
       </td>
-      <td>{{ s.puntoPartida }}</td>
-      <td>{{ s.puntoLlegada }}</td>
-      <td>{{ s.cantidad }}</td>
+      <td class="col-negrita">{{ s.puntoPartida }}</td>
+      <td class="col-negrita">{{ s.puntoLlegada }}</td>
+      <td class="col-negrita">{{ s.cantidad }}</td>
       <td>
         <p-tag *ngIf="cupoServicio(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>
       </td>
-      <td>{{ s.motivo }}</td>
       <td>
+        <span *ngIf="s.esEmergencia" class="d-md-none text-danger fw-bold">EMERGENCIA MÉDICA - </span>
+        <span *ngIf="!s.esEmergencia && s.prioridad === 'EMERGENCIA'" class="d-md-none text-danger fw-bold">EMERGENCIA - </span>
+        {{ s.motivo }}
+      </td>
+      <td class="d-none d-md-table-cell">
         <p-tag [value]="s.prioridad ?? (s.esEmergencia ? 'EMERGENCIA' : 'NORMAL')" [severity]="s.prioridad === 'EMERGENCIA' || s.esEmergencia ? 'danger' : s.prioridad === 'ALTA' ? 'warn' : 'secondary'"></p-tag>
         <p-tag *ngIf="s.esEmergencia" value="MÉDICA" severity="danger" icon="pi pi-heart" class="ms-1"></p-tag>
       </td>

@@ -22,3 +22,8 @@ tr.fila-agrupada {
   dd { margin: 0; }
 }
 
+// Vista móvil (<768px): partida, llegada y cantidad en negrita
+@media (max-width: 767.98px) {
+  .col-negrita { font-weight: 700; }
+}
+

@@ -36,6 +36,13 @@ export class ConductorComponent implements OnInit, OnDestroy {
   pasajerosExtra = 1;
   cargando = false;
   fechaFiltro = this.fechaLocal();
+  // Vista móvil (<768px): sin selector de fecha, siempre servicios de hoy
+  private mediaQuery = window.matchMedia('(max-width: 767.98px)');
+  esMovil = this.mediaQuery.matches;
+  private alCambiarMedia = (e: MediaQueryListEvent) => {
+    this.esMovil = e.matches;
+    if (e.matches) void this.cargar();
+  };
   // Registro en la parada actual: qué parada se está cargando y los conteos reales
   paradaRegistrando?: { servicio: Solicitud; parada: Parada };
   subenReal = 0;
@@ -55,6 +62,7 @@ export class ConductorComponent implements OnInit, OnDestroy {
   ) { }
 
   async ngOnInit() {
+    this.mediaQuery.addEventListener('change', this.alCambiarMedia);
     this.usuario = await this.authService.getUser();
     try {
       [this.puntos, this.unidades] = await Promise.all([
@@ -70,6 +78,7 @@ export class ConductorComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.timerGps) clearInterval(this.timerGps);
+    this.mediaQuery.removeEventListener('change', this.alCambiarMedia);
   }
 
   // Ubicación en vivo: se reporta a cada traslado EN_RUTA de la unidad
@@ -100,6 +109,8 @@ export class ConductorComponent implements OnInit, OnDestroy {
       return;
     }
     this.cargando = true;
+    // En móvil el selector de fecha está oculto: siempre hoy
+    if (this.esMovil) this.fechaFiltro = this.fechaLocal();
     try {
       this.servicios = await this.transporteService.serviciosConductor(this.usuario.placa, this.fechaFiltro || undefined);
     } catch {

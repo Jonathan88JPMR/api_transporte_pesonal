@@ -52,6 +52,14 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
   detalle?: Solicitud;
   editando?: Solicitud;
 
+  // Vista móvil (<768px): sin filtros de fecha, solo los servicios de hoy
+  private mediaQuery = window.matchMedia('(max-width: 767.98px)');
+  esMovil = this.mediaQuery.matches;
+  private alCambiarMedia = (e: MediaQueryListEvent) => {
+    this.esMovil = e.matches;
+    if (e.matches) void this.cargar();
+  };
+
   form: FormGroup;
 
   constructor(
@@ -74,6 +82,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
+    this.mediaQuery.addEventListener('change', this.alCambiarMedia);
     this.usuario = await this.authService.getUser();
     await Promise.all([this.cargar(), this.cargarCatalogos(), this.cargarTraslados(), this.cargarComunicados()]);
     // La alerta de entrada la muestra el layout (modal bloqueante global);
@@ -102,7 +111,9 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
       // la gestión (editar/anular/acoplar) sigue restringida a las propias
       const todas = await this.transporteService.listarSolicitudes({ usuario: this.usuario?.usuario });
       let { filtroDesde: desde, filtroHasta: hasta } = this;
-      if (desde && hasta && desde > hasta) [desde, hasta] = [hasta, desde];
+      // En móvil los filtros de fecha no existen: siempre se muestra solo hoy
+      if (this.esMovil) desde = hasta = this.fechaHoy();
+      else if (desde && hasta && desde > hasta) [desde, hasta] = [hasta, desde];
       this.solicitudes = todas.filter(s => {
         const f = s.fechaProgramada?.slice(0, 10) ?? '';
         return (!desde || f >= desde) && (!hasta || f <= hasta);
@@ -373,6 +384,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.timerSeguimiento) clearInterval(this.timerSeguimiento);
+    this.mediaQuery.removeEventListener('change', this.alCambiarMedia);
   }
 
   async guardar() {

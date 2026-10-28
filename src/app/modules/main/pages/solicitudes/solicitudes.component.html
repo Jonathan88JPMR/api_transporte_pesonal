@@ -15,7 +15,7 @@
   <span *ngIf="c.unidades" class="d-block">Unidades ocupadas: {{ c.unidades }}<span *ngIf="c.motivoActividad"> · {{ c.motivoActividad }}</span></span>
 </div>
 
-<div class="d-flex gap-2 align-items-end mb-2">
+<div class="d-none d-md-flex gap-2 align-items-end mb-2">
   <div>
     <label class="form-label mb-0 small">Desde</label>
     <input type="date" class="form-control form-control-sm" [(ngModel)]="filtroDesde" (change)="cargar()" />
@@ -42,9 +42,9 @@
          styleClass="p-datatable-sm p-datatable-striped">
   <ng-template #header>
     <tr>
-      <th>PRIORIDAD</th>
+      <th class="d-none d-md-table-cell">PRIORIDAD</th>
       <th>NOMBRE</th>
-      <th>FECHA / HORA</th>
+      <th><span class="d-none d-md-inline">FECHA / HORA</span><span class="d-md-none">HORA</span></th>
       <th>AREA</th>
       <th>P. PARTIDA</th>
       <th>P. LLEGADA</th>
@@ -59,17 +59,21 @@
   <ng-template #body let-s>
     <tr (click)="verDetalle(s)" [class.fila-agrupada]="!!s.idTraslado"
         [class.table-danger]="s.prioridad === 'EMERGENCIA'" [class.table-warning]="s.prioridad === 'ALTA'">
-      <td>
+      <td class="d-none d-md-table-cell">
         <p-tag [value]="s.prioridad ?? 'NORMAL'" [severity]="s.prioridad === 'EMERGENCIA' ? 'danger' : s.prioridad === 'ALTA' ? 'warn' : 'secondary'"></p-tag>
         <p-tag *ngIf="s.esEmergencia" value="MÉDICA" severity="danger" icon="pi pi-heart" class="ms-1"></p-tag>
       </td>
       <td>{{ s.nombre }}</td>
-      <td>{{ s.fechaProgramada | date:'dd/MM/yyyy' }} {{ s.horaProgramada }}</td>
+      <td><span class="d-none d-md-inline">{{ s.fechaProgramada | date:'dd/MM/yyyy' }} </span>{{ s.horaProgramada }}</td>
       <td>{{ s.area }}</td>
-      <td>{{ s.puntoPartida }}</td>
-      <td>{{ s.puntoLlegada }}</td>
-      <td>{{ s.cantidad }}</td>
-      <td>{{ s.motivo }}</td>
+      <td class="col-negrita">{{ s.puntoPartida }}</td>
+      <td class="col-negrita">{{ s.puntoLlegada }}</td>
+      <td class="col-negrita">{{ s.cantidad }}</td>
+      <td>
+        <span *ngIf="s.esEmergencia" class="d-md-none text-danger fw-bold">EMERGENCIA MÉDICA - </span>
+        <span *ngIf="!s.esEmergencia && s.prioridad === 'EMERGENCIA'" class="d-md-none text-danger fw-bold">EMERGENCIA - </span>
+        {{ s.motivo }}
+      </td>
       <td>{{ placaTexto(s) }}</td>
       <td>
         <p-tag *ngIf="cupoDe(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>
