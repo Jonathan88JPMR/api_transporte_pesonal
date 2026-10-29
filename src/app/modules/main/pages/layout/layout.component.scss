@@ -7,7 +7,13 @@
   .nav-small-cap .hide-menu {
     font-size: 12px;
   }
+  > div {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
   .content-scrollSidebar {
+    flex-shrink: 0;
     padding: 15px 0 10px 0;
     background-color: #238664;
   }
@@ -48,8 +54,10 @@
     gap: 20px;
   }
   .scroll-navbar {
-    max-height: calc(100vh - 150px) !important;
-    overflow-y: auto !important;
+    flex: 1;
+    min-height: 0;
+    height: auto !important;
+    max-height: none !important;
     overflow-x: hidden !important;
     display: flex !important;
     flex-direction: column !important;
