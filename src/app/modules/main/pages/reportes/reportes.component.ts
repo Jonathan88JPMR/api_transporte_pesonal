@@ -135,11 +135,12 @@ export class ReportesComponent implements OnInit {
       d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
       return 'SEM-' + String(Math.ceil((((d.getTime() - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000) + 1) / 7)).padStart(2, '0');
     };
-    // Minutos entre lo programado y el inicio real del servicio
+    // Minutos entre la hora requerida y el inicio real del servicio
     const demora = (r: Solicitud) => {
       const f = fechaProg(r);
-      if (!f || !r.fechaInicio || !r.horaProgramada) return '';
-      const [h, m] = r.horaProgramada.split(':').map(Number);
+      const hora = r.horaRequerida ?? r.horaProgramada;
+      if (!f || !r.fechaInicio || !hora) return '';
+      const [h, m] = hora.split(':').map(Number);
       const prog = new Date(f); prog.setHours(h, m, 0, 0);
       return Math.round((new Date(r.fechaInicio).getTime() - prog.getTime()) / 60000) + ' min';
     };
@@ -148,7 +149,7 @@ export class ReportesComponent implements OnInit {
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Movilidad');
-    const columnas = ['MES', 'SEMANA', 'DIA', 'NOMBRE', 'H.PROGRAMADA', 'AREA', 'PTO. PARTIDA',
+    const columnas = ['MES', 'SEMANA', 'DIA', 'NOMBRE', 'H.SOLICITUD', 'H.REQUERIDA', 'AREA', 'PTO. PARTIDA',
       'PTO. LLEGADA', 'CANTIDAD', 'MOTIVO', 'PLACA', 'REALIZADO', 'DEMORA', 'APOYO/HR', 'INTERVALO'];
     const header = ws.addRow(columnas);
     header.height = 20;
@@ -168,7 +169,7 @@ export class ReportesComponent implements OnInit {
       const f = fechaProg(r);
       const row = ws.addRow([
         f ? MESES[f.getMonth()] : '', f ? semana(f) : '', r.fechaProgramada ?? '',
-        r.nombre, r.horaProgramada, r.area ?? '', r.puntoPartida, r.puntoLlegada,
+        r.nombre, r.horaProgramada, r.horaRequerida ?? r.horaProgramada, r.area ?? '', r.puntoPartida, r.puntoLlegada,
         r.cantidad, r.motivo ?? '', this.placaTexto(r), r.realizado ? 'SI' : 'NO',
         demora(r), '', intervalo(r)
       ]);
@@ -182,8 +183,8 @@ export class ReportesComponent implements OnInit {
   }
 
   exportarCsv(): void {
-    const columnas = ['Fecha', 'Solicitante', 'Área', 'Hora', 'Origen', 'Destino', 'Cantidad', 'Motivo', 'Prioridad', 'Placa', 'Estado'];
-    const filas = this.registrosFiltrados.map(r => [r.fechaProgramada, r.nombre, r.area ?? '', r.horaProgramada,
+    const columnas = ['Fecha', 'Solicitante', 'Área', 'Hora Solicitud', 'Hora Requerida', 'Origen', 'Destino', 'Cantidad', 'Motivo', 'Prioridad', 'Placa', 'Estado'];
+    const filas = this.registrosFiltrados.map(r => [r.fechaProgramada, r.nombre, r.area ?? '', r.horaProgramada, r.horaRequerida ?? r.horaProgramada,
       r.puntoPartida, r.puntoLlegada, r.cantidad, r.motivo ?? '', r.prioridad ?? (r.esEmergencia ? 'EMERGENCIA' : 'NORMAL'), this.placaTexto(r), r.estado]);
     const csv = [columnas, ...filas].map(f => f.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const enlace = document.createElement('a');

@@ -427,7 +427,7 @@ export class ConductorComponent implements OnInit, OnDestroy {
     if (!this.fechaFiltro) return ''; // sin fecha no hay "día" que resumir
     const activos = this.servicios
       .filter(s => !s.realizado && s.estado !== 'ANULADO')
-      .sort((a, b) => (a.horaProgramada ?? '').localeCompare(b.horaProgramada ?? ''));
+      .sort((a, b) => (a.horaRequerida ?? a.horaProgramada ?? '').localeCompare(b.horaRequerida ?? b.horaProgramada ?? ''));
     if (!activos.length) return '';
 
     const rutas: string[] = [];

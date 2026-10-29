@@ -68,7 +68,7 @@
               <th style="width: 40px"></th>
               <th>NOMBRE</th>
               <th>FECHA</th>
-              <th>Hr.</th>
+              <th>HR. REQ.</th>
               <th>P. PARTIDA</th>
               <th>P. LLEGADA</th>
               <th>CANT.</th>
@@ -88,7 +88,7 @@
               </td>
               <td>{{ s.nombre }}</td>
               <td>{{ s.fechaProgramada | date:'dd/MM' }}</td>
-              <td>{{ s.horaProgramada }}</td>
+              <td>{{ s.horaRequerida || s.horaProgramada }}</td>
               <td>{{ s.puntoPartida }}</td>
               <td>{{ s.puntoLlegada }}</td>
               <td>{{ s.cantidad }}</td>
@@ -416,7 +416,7 @@
   <div class="d-flex flex-column gap-3">
     <div class="row g-2">
       <div class="col-6"><label class="form-label small mb-0">Fecha</label><input type="date" class="form-control" [(ngModel)]="formEdicion.fechaProgramada" /></div>
-      <div class="col-6"><label class="form-label small mb-0">Hora</label><input type="time" class="form-control" [(ngModel)]="formEdicion.horaProgramada" /></div>
+      <div class="col-6"><label class="form-label small mb-0">Hr. requerida</label><input type="time" class="form-control" [(ngModel)]="formEdicion.horaRequerida" /></div>
     </div>
     <div class="row g-2">
       <div class="col-6"><label class="form-label small mb-0">P. partida</label><p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="formEdicion.puntoPartida" appendTo="body" styleClass="w-100"></p-select></div>

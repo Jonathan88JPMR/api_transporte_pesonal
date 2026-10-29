@@ -19,6 +19,9 @@ export interface Solicitud {
   idArea?: number | null;
   fechaProgramada: string;
   horaProgramada: string;
+  // Hora en que se necesita la movilidad (la elige el supervisor);
+  // horaProgramada queda como hora de digitacion del registro
+  horaRequerida?: string | null;
   puntoPartida: string;
   puntoLlegada: string;
   cantidad: number;

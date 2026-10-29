@@ -26,7 +26,7 @@
          styleClass="p-datatable-sm p-datatable-striped">
   <ng-template #header>
     <tr>
-      <th>Hr. PROGRAMADA</th>
+      <th>HR. REQUERIDA</th>
       <th>SOLICITA</th>
       <th>P. PARTIDA</th>
       <th>P. LLEGADA</th>
@@ -40,7 +40,7 @@
   </ng-template>
   <ng-template #body let-s>
     <tr [class.table-success]="s.realizado" [class.table-danger]="s.prioridad === 'EMERGENCIA' || s.esEmergencia">
-      <td><span class="d-none d-md-inline">{{ s.fechaProgramada | date:'dd/MM' }} </span>{{ s.horaProgramada }}</td>
+      <td><span class="d-none d-md-inline">{{ s.fechaProgramada | date:'dd/MM' }} </span>{{ s.horaRequerida || s.horaProgramada }}</td>
       <td>
         {{ s.nombre }}
         <div class="small text-muted" *ngIf="s.area">{{ s.area }}</div>

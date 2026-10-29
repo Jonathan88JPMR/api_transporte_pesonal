@@ -110,7 +110,7 @@
       <th>NOMBRE</th>
       <th>REGISTRA</th>
       <th>AREA</th>
-      <th>Hr.</th>
+      <th>HR. REQ.</th>
       <th>P. PARTIDA</th>
       <th>P. LLEGADA</th>
       <th>CANT.</th>
@@ -126,7 +126,7 @@
       <td>{{ s.nombre }}</td>
       <td>{{ s.usuarioRegistra }}</td>
       <td>{{ s.area }}</td>
-      <td>{{ s.horaProgramada }}</td>
+      <td>{{ s.horaRequerida || s.horaProgramada }}</td>
       <td>{{ s.puntoPartida }}</td>
       <td>{{ s.puntoLlegada }}</td>
       <td>{{ s.cantidad }}</td>

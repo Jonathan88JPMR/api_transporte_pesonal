@@ -449,6 +449,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     this.formEdicion = {
       fechaProgramada: (s.fechaProgramada ?? '').slice(0, 10),
       horaProgramada: s.horaProgramada,
+      horaRequerida: s.horaRequerida ?? s.horaProgramada,
       puntoPartida: s.puntoPartida,
       puntoLlegada: s.puntoLlegada,
       cantidad: s.cantidad,
@@ -710,7 +711,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
   generarRutaSugerida() {
     const solicitudes = (this.trasladoEditando?.solicitudes ?? [])
       .filter(s => s.estado !== 'ANULADO')
-      .sort((a, b) => (a.horaProgramada ?? '').localeCompare(b.horaProgramada ?? ''));
+      .sort((a, b) => (a.horaRequerida ?? a.horaProgramada ?? '').localeCompare(b.horaRequerida ?? b.horaProgramada ?? ''));
     if (!solicitudes.length) {
       this.alertService.showAlert('warning', 'Este traslado no tiene solicitudes para sugerir una ruta', 'Atención');
       return;

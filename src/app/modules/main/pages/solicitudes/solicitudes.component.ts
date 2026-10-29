@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { TableModule } from 'primeng/table';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
@@ -71,6 +71,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     this.form = this.fb.group({
       fechaProgramada: [this.fechaHoy(), Validators.required],
       horaProgramada: ['', Validators.required],
+      horaRequerida: ['', Validators.required],
       puntoPartida: [null, Validators.required],
       puntoLlegada: [null, Validators.required],
       cantidad: [1, [Validators.required, Validators.min(1)]],
@@ -78,7 +79,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
       observacion: [''],
       prioridad: ['NORMAL'],
       esEmergencia: [false]
-    });
+    }, { validators: this.horaRequeridaValida });
   }
 
   async ngOnInit() {
@@ -226,7 +227,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     this.editando = undefined;
     // Fecha y hora siempre del sistema — el backend además las fuerza a GETDATE()
     this.form.reset({
-      fechaProgramada: this.fechaHoy(), horaProgramada: this.horaAhora(),
+      fechaProgramada: this.fechaHoy(), horaProgramada: this.horaAhora(), horaRequerida: this.horaAhora(),
       cantidad: 1, observacion: '', prioridad: 'NORMAL', esEmergencia: false
     });
     this.form.get('prioridad')?.enable({ emitEvent: false });
@@ -239,7 +240,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     this.mostrarComunicado = false;
     this.editando = undefined;
     this.form.reset({
-      fechaProgramada: this.fechaHoy(), horaProgramada: this.horaAhora(),
+      fechaProgramada: this.fechaHoy(), horaProgramada: this.horaAhora(), horaRequerida: this.horaAhora(),
       cantidad: 1, observacion: '', prioridad: 'EMERGENCIA', esEmergencia: true
     });
     this.alCambiarEmergencia(true);
@@ -255,6 +256,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     this.form.reset({
       fechaProgramada: s.fechaProgramada,
       horaProgramada: s.horaProgramada,
+      horaRequerida: s.horaRequerida ?? s.horaProgramada,
       puntoPartida: s.puntoPartida,
       puntoLlegada: s.puntoLlegada,
       cantidad: s.cantidad,
@@ -420,6 +422,14 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     const p = (n: number) => String(n).padStart(2, '0');
     return `${p(d.getHours())}:${p(d.getMinutes())}`;
   }
+
+  // La hora requerida no puede ser anterior al momento de digitar
+  // (las emergencias medicas se atienden de inmediato y la saltan)
+  private horaRequeridaValida: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
+    const req = group.get('horaRequerida')?.value;
+    if (!req || group.get('esEmergencia')?.value === true) return null;
+    return req >= this.horaAhora() ? null : { horaPasada: true };
+  };
 
   // Traslados de la solicitud: el directo (simple/unida) mas el de cada
   // porcion cuando esta repartida en varias unidades (MULTIPLE)
