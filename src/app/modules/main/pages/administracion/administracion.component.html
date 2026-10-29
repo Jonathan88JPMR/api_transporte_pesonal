@@ -6,7 +6,7 @@
         </button>
       </li>
     </ul>
-    <div class="card mb-3" *ngIf="entidad !== 'AUDITORIA'"><div class="card-body">
+    <div class="card mb-3" *ngIf="entidad !== 'AUDITORIA' && entidad !== 'VERSION'"><div class="card-body">
       <div class="row g-2">
         <ng-container *ngIf="entidad === 'USUARIO'">
           <div class="col-md-2"><input class="form-control" [(ngModel)]="form.usuario" placeholder="Usuario" [disabled]="!!form.id" autocomplete="off" /></div>
@@ -110,7 +110,7 @@
         <label class="form-check-label text-muted small" for="verEliminados">Mostrar usuarios eliminados</label>
       </div>
     </div>
-    <p-table *ngIf="entidad !== 'AUDITORIA'" [value]="registros" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
+    <p-table *ngIf="entidad !== 'AUDITORIA' && entidad !== 'VERSION'" [value]="registros" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
              [rowHover]="true" [showCurrentPageReport]="true"
              currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
              styleClass="p-datatable-sm p-datatable-striped table-mobile-cards">
@@ -154,3 +154,4 @@
         <tr><td colspan="5" class="text-center text-muted">Sin registros</td></tr>
       </ng-template>
     </p-table>
+    <app-admin-version-api *ngIf="entidad === 'VERSION'"></app-admin-version-api>

@@ -1,0 +1,220 @@
+<div class="version-api-container">
+  <div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bx bx-git-merge mr-2"></i>
+        Control de versiones — API
+      </h5>
+      <button class="btn btn-sm btn-outline-secondary" (click)="cargarEstado()" [disabled]="loading">
+        <i class="bx bx-refresh"></i> Refrescar
+      </button>
+    </div>
+
+    <div class="card-body">
+      <p class="text-muted mb-4">
+        Selecciona qué API se usará para consultar y registrar las versiones de despliegue de esta aplicación.
+        El cambio aplica solo en este navegador y se mantiene aunque cierres la pestaña.
+      </p>
+
+      <!-- Selector de API -->
+      <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+          <div class="api-card" [class.active]="activeApi === 'TRANSPORTE'" (click)="cambiarApi('TRANSPORTE')">
+            <div class="api-card-header">
+              <span class="badge" [class.bg-primary]="activeApi === 'TRANSPORTE'" [class.bg-secondary]="activeApi !== 'TRANSPORTE'">
+                {{ activeApi === 'TRANSPORTE' ? 'ACTIVA' : 'Inactiva' }}
+              </span>
+              <h6 class="mt-2 mb-1">API Transporte</h6>
+              <small class="text-muted">api_transporte_personal · GET + SQL inline</small>
+            </div>
+            <div class="api-card-body">
+              <code class="d-block">{{ transporteUrl }}</code>
+              <ul class="features mt-2">
+                <li>GET /current?appName&amp;environment</li>
+                <li>POST / (registro)</li>
+                <li>Tabla AppDeployments en BD transporte</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <div class="api-card" [class.active]="activeApi === 'MAESTRA'" (click)="cambiarApi('MAESTRA')">
+            <div class="api-card-header">
+              <span class="badge" [class.bg-primary]="activeApi === 'MAESTRA'" [class.bg-secondary]="activeApi !== 'MAESTRA'">
+                {{ activeApi === 'MAESTRA' ? 'ACTIVA' : 'Inactiva' }}
+              </span>
+              <h6 class="mt-2 mb-1">API Maestra</h6>
+              <small class="text-muted">api_maestros · POST + Stored Procedures</small>
+            </div>
+            <div class="api-card-body">
+              <code class="d-block">{{ maestraUrl }}</code>
+              <ul class="features mt-2">
+                <li>POST /current, /history, /register</li>
+                <li>SP: MAESTRO_obtenerDespliegueActual, ...</li>
+                <li>Centralizada para múltiples apps</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado actual -->
+      <div class="alert alert-info">
+        <strong>Default del entorno:</strong> {{ defaultApi }}<br>
+        <strong>API activa ahora:</strong> {{ apiLabel(activeApi) }}<br>
+        <small class="text-muted">localStorage["version_control_api"] = {{ activeApi }}</small>
+      </div>
+
+      <!-- Estado de versiones -->
+      <h6 class="mt-4 mb-3">Estado de versiones</h6>
+      <div *ngIf="loading" class="text-center py-3">
+        <i class="bx bx-loader spin"></i> Consultando...
+      </div>
+
+      <div *ngIf="!loading" class="row">
+        <div class="col-md-4 mb-2">
+          <div class="version-box">
+            <small class="text-muted">Versión local (bundle)</small>
+            <div class="version-value">{{ localVersion || '—' }}</div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="version-box">
+            <small class="text-muted">Versión IIS (version.json)</small>
+            <div class="version-value">{{ serverVersion || '—' }}</div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="version-box" [class.warning]="audit?.isServerOutOfSyncWithApi">
+            <small class="text-muted">Versión {{ activeApi === 'MAESTRA' ? 'Maestra' : 'Transporte' }}</small>
+            <div class="version-value">{{ audit?.apiVersion || '—' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="audit && !loading" class="mt-3">
+        <div class="alert"
+             [class.alert-success]="audit.isFullyAligned"
+             [class.alert-warning]="!audit.isFullyAligned && !!audit.confirmedUpdateVersion"
+             [class.alert-danger]="audit.isServerOutOfSyncWithApi">
+          <strong>Decisión:</strong> {{ audit.promptDecisionReason }}
+        </div>
+
+        <div *ngIf="currentDeployment" class="card mt-3">
+          <div class="card-header bg-light">
+            <small><strong>Último deployment activo en {{ activeApi }}</strong></small>
+          </div>
+          <div class="card-body" style="font-size: 13px;">
+            <div><strong>Version:</strong> {{ currentDeployment.version }}</div>
+            <div><strong>Build time:</strong> {{ currentDeployment.buildTime }}</div>
+            <div><strong>Deployed at:</strong> {{ currentDeployment.deployedAt }}</div>
+            <div><strong>Deployed by:</strong> {{ currentDeployment.deployedBy }}</div>
+            <div><strong>Server:</strong> {{ currentDeployment.serverName }}</div>
+            <div><strong>Notes:</strong> {{ currentDeployment.notes }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historial completo de deployments -->
+  <div class="card shadow-sm mt-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h6 class="mb-0">
+          <i class="bx bx-history mr-2"></i>
+          Historial de despliegues
+        </h6>
+        <small class="text-muted">Registros almacenados en {{ apiLabel(activeApi) }}</small>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <label class="mb-0 mr-1" style="font-size: 13px;">Mostrar:</label>
+        <select class="form-control form-control-sm" style="width: 80px;"
+                [(ngModel)]="historyTake" (change)="cargarHistorial()">
+          <option *ngFor="let n of historyTakeOptions" [ngValue]="n">{{ n }}</option>
+        </select>
+        <button class="btn btn-sm btn-outline-primary" (click)="cargarHistorial()" [disabled]="loadingHistory">
+          <i class="bx bx-refresh"></i> Refrescar
+        </button>
+        <button class="btn btn-sm btn-outline-success" (click)="exportarHistorialCSV()" [disabled]="!history.length">
+          <i class="bx bx-download"></i> CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="card-body p-0">
+      <div *ngIf="loadingHistory" class="text-center py-4">
+        <i class="bx bx-loader spin"></i> Cargando historial...
+      </div>
+
+      <div *ngIf="!loadingHistory && !history.length" class="text-center py-4 text-muted">
+        <i class="bx bx-inbox"></i> No hay registros en el historial.
+      </div>
+
+      <div *ngIf="!loadingHistory && history.length" class="table-responsive">
+        <table class="table table-hover table-sm mb-0 history-table">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 30px;"></th>
+              <th>Versión</th>
+              <th>Fecha de despliegue</th>
+              <th>Hace</th>
+              <th>Desplegado por</th>
+              <th>Servidor</th>
+              <th>Ambiente</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let d of history; trackBy: trackById">
+              <tr [class.table-success]="d.isActive" (click)="toggleExpand(d.id)" style="cursor: pointer;">
+                <td>
+                  <i class="bx" [class.bx-chevron-right]="expandedId !== d.id" [class.bx-chevron-down]="expandedId === d.id"></i>
+                </td>
+                <td><strong>{{ d.version }}</strong></td>
+                <td>{{ d.deployedAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+                <td><small class="text-muted">{{ tiempoTranscurrido(d.deployedAt) }}</small></td>
+                <td>{{ d.deployedBy || '-' }}</td>
+                <td><small>{{ d.serverName || '-' }}</small></td>
+                <td><small>{{ d.environment }}</small></td>
+                <td>
+                  <span *ngIf="d.isActive" class="badge bg-success">ACTIVA</span>
+                  <span *ngIf="!d.isActive" class="badge bg-secondary">Anterior</span>
+                </td>
+              </tr>
+              <tr *ngIf="expandedId === d.id" class="detail-row">
+                <td colspan="8">
+                  <div class="detail-grid">
+                    <div><small class="text-muted">ID</small><div>{{ d.id }}</div></div>
+                    <div><small class="text-muted">App</small><div>{{ d.appName }}</div></div>
+                    <div><small class="text-muted">Ambiente</small><div>{{ d.environment }}</div></div>
+                    <div><small class="text-muted">Versión</small><div><strong>{{ d.version }}</strong></div></div>
+                    <div><small class="text-muted">Build time</small><div>{{ d.buildTime | date:'dd/MM/yyyy HH:mm:ss' }}</div></div>
+                    <div><small class="text-muted">Deployed at</small><div>{{ d.deployedAt | date:'dd/MM/yyyy HH:mm:ss' }}</div></div>
+                    <div><small class="text-muted">Deployed by</small><div>{{ d.deployedBy || '-' }}</div></div>
+                    <div><small class="text-muted">Servidor</small><div>{{ d.serverName || '-' }}</div></div>
+                    <div><small class="text-muted">¿Activa?</small>
+                      <div>
+                        <span *ngIf="d.isActive" class="badge bg-success">SI</span>
+                        <span *ngIf="!d.isActive" class="badge bg-secondary">NO</span>
+                      </div>
+                    </div>
+                    <div class="detail-notes">
+                      <small class="text-muted">Notas</small>
+                      <div>{{ d.notes || '(sin notas)' }}</div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="!loadingHistory && history.length" class="card-footer text-muted text-right" style="font-size: 12px;">
+        Total: <strong>{{ history.length }}</strong> registro(s) · Ordenados por fecha descendente
+      </div>
+    </div>
+  </div>
+</div>

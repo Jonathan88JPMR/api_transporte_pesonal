@@ -7,11 +7,12 @@ import { TooltipModule } from 'primeng/tooltip';
 import { TransporteService } from '../../services/transporte.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
 import { Auditoria } from '@/app/models/transporte.models';
+import { AdminVersionApiComponent } from './pages/admin-version-api/admin-version-api.component';
 
 @Component({
   selector: 'app-administracion',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableModule, TagModule, TooltipModule],
+  imports: [CommonModule, FormsModule, TableModule, TagModule, TooltipModule, AdminVersionApiComponent],
   templateUrl: './administracion.component.html',
   styleUrl: './administracion.component.scss'
 })
@@ -20,9 +21,9 @@ export class AdministracionComponent implements OnInit {
   // Tabs ocultos por ahora (flota 100% propia): TRANSPORTISTA, TARIFA y CECO
   // son catálogos del flujo de OS con terceros. El código del mantenedor se
   // conserva (formulario, columnas y SP) por si vuelven unidades de terceros.
-  private todasLasEntidades = [{ valor: 'USUARIO', etiqueta: 'Usuarios', icon: 'bx-user' }, { valor: 'CONDUCTOR', etiqueta: 'Conductores', icon: 'bx-id-card' }, { valor: 'UNIDAD', etiqueta: 'Unidades', icon: 'bx-bus' }, { valor: 'TIPO_VEHICULO', etiqueta: 'Tipos vehículo', icon: 'bx-car' }, { valor: 'PUNTO', etiqueta: 'Puntos', icon: 'bx-map-pin' }, { valor: 'MOTIVO', etiqueta: 'Motivos', icon: 'bx-list-check' }, { valor: 'AREA', etiqueta: 'Áreas', icon: 'bx-buildings' }, /*{ valor: 'TRANSPORTISTA', etiqueta: 'Transportistas', icon: 'bx-briefcase' }, { valor: 'TARIFA', etiqueta: 'Tarifas', icon: 'bx-dollar-circle' }, { valor: 'CECO', etiqueta: 'Centros de costo', icon: 'bx-target-lock' },*/ { valor: 'COMUNICADO', etiqueta: 'Comunicados', icon: 'bx-megaphone' }, { valor: 'AUDITORIA', etiqueta: 'Auditoría', icon: 'bx-history' }];
+  private todasLasEntidades = [{ valor: 'USUARIO', etiqueta: 'Usuarios', icon: 'bx-user' }, { valor: 'CONDUCTOR', etiqueta: 'Conductores', icon: 'bx-id-card' }, { valor: 'UNIDAD', etiqueta: 'Unidades', icon: 'bx-bus' }, { valor: 'TIPO_VEHICULO', etiqueta: 'Tipos vehículo', icon: 'bx-car' }, { valor: 'PUNTO', etiqueta: 'Puntos', icon: 'bx-map-pin' }, { valor: 'MOTIVO', etiqueta: 'Motivos', icon: 'bx-list-check' }, { valor: 'AREA', etiqueta: 'Áreas', icon: 'bx-buildings' }, /*{ valor: 'TRANSPORTISTA', etiqueta: 'Transportistas', icon: 'bx-briefcase' }, { valor: 'TARIFA', etiqueta: 'Tarifas', icon: 'bx-dollar-circle' }, { valor: 'CECO', etiqueta: 'Centros de costo', icon: 'bx-target-lock' },*/ { valor: 'COMUNICADO', etiqueta: 'Comunicados', icon: 'bx-megaphone' }, { valor: 'AUDITORIA', etiqueta: 'Auditoría', icon: 'bx-history' }, { valor: 'VERSION', etiqueta: 'Versiones', icon: 'bx-git-merge' }];
   entidades: { valor: string; etiqueta: string; icon: string }[] = [];
-  entidad: 'USUARIO' | 'CONDUCTOR' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' | 'TRANSPORTISTA' | 'TARIFA' | 'CECO' | 'COMUNICADO' | 'AUDITORIA' | 'TIPO_VEHICULO' = 'USUARIO';
+  entidad: 'USUARIO' | 'CONDUCTOR' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' | 'TRANSPORTISTA' | 'TARIFA' | 'CECO' | 'COMUNICADO' | 'AUDITORIA' | 'TIPO_VEHICULO' | 'VERSION' = 'USUARIO';
   registros: any[] = [];
   registrosTodos: any[] = [];
   auditoria: Auditoria[] = [];
@@ -55,7 +56,7 @@ export class AdministracionComponent implements OnInit {
     await Promise.all([this.cargar(), this.cargarAreas(), this.cargarTransportistas(), this.cargarConductores(), this.cargarUnidades(), this.cargarTiposVehiculo()]);
   }
   async cambiarEntidad(entidad: any) { this.entidad = entidad; this.limpiar(); await this.cargar(); }
-  entidadApi(): 'USUARIO' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' | 'TRANSPORTISTA' | 'TARIFA' | 'CECO' | 'TIPO_VEHICULO' { return (this.entidad === 'CONDUCTOR' || this.entidad === 'AUDITORIA' || this.entidad === 'COMUNICADO') ? 'USUARIO' : this.entidad; }
+  entidadApi(): 'USUARIO' | 'UNIDAD' | 'PUNTO' | 'MOTIVO' | 'AREA' | 'TRANSPORTISTA' | 'TARIFA' | 'CECO' | 'TIPO_VEHICULO' { return (this.entidad === 'CONDUCTOR' || this.entidad === 'AUDITORIA' || this.entidad === 'COMUNICADO' || this.entidad === 'VERSION') ? 'USUARIO' : this.entidad; }
   esUsuario(): boolean { return this.entidad === 'USUARIO' || this.entidad === 'CONDUCTOR'; }
   // el coordinador solo puede tocar conductores y supervisores (el SP también lo valida)
   puedeGestionar(r: any): boolean { return !this.esCoordinador || r.idrol === 'CHTRANS' || r.idrol === 'SPTRANS' || r.idrol === undefined; }
@@ -70,6 +71,7 @@ export class AdministracionComponent implements OnInit {
   // catálogo que alimenta el select "Tipo de vehículo" del mantenedor de unidades
   async cargarTiposVehiculo() { try { this.tiposVehiculo = (await this.service.administrarCatalogo('TIPO_VEHICULO', 'LISTAR')).filter(t => t.activo !== false); } catch { } }
   async cargar() {
+    if (this.entidad === 'VERSION') return; // el componente admin-version-api carga sus propios datos
     if (this.entidad === 'AUDITORIA') { this.auditoria = await this.service.listarAuditoria(); return; }
     if (this.entidad === 'COMUNICADO') { this.registrosTodos = await this.service.listarComunicados(); this.aplicarFiltros(); return; }
     const datos = await this.service.administrarCatalogo(this.entidadApi(), 'LISTAR');

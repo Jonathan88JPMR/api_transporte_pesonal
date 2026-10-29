@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '@/app/modules/auth/services/auth.service';
 import { DexieService } from '@/app/shared/dixiedb/dexie-db.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
+import { environment } from '@/environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -16,6 +17,7 @@ import { AlertService } from '@/app/shared/alertas/alerts.service';
 export class LoginComponent {
 
   mostrarClave = false;
+  version = environment.appVersion;
   mensajeLogin: string = '';
   isCharge = false;
   loginForm: FormGroup;

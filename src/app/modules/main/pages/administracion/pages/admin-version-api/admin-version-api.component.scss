@@ -1,0 +1,197 @@
+.version-api-container {
+  padding: 16px;
+
+  .api-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 100%;
+
+    &:hover {
+      border-color: #3085d6;
+      box-shadow: 0 2px 8px rgba(48, 133, 214, 0.15);
+    }
+
+    &.active {
+      border-color: #3085d6;
+      background-color: #f0f7ff;
+      box-shadow: 0 2px 12px rgba(48, 133, 214, 0.25);
+    }
+
+    .api-card-header {
+      .badge {
+        font-size: 10px;
+        padding: 4px 8px;
+
+        &.bg-primary {
+          background-color: #3085d6 !important;
+          color: white;
+        }
+        &.bg-secondary {
+          background-color: #adb5bd !important;
+          color: white;
+        }
+      }
+
+      h6 {
+        font-weight: 600;
+      }
+    }
+
+    .api-card-body {
+      margin-top: 12px;
+
+      code {
+        font-size: 11px;
+        background: #f5f5f5;
+        padding: 4px 8px;
+        border-radius: 4px;
+        word-break: break-all;
+      }
+
+      .features {
+        list-style: none;
+        padding-left: 0;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #555;
+
+        li {
+          padding: 2px 0;
+
+          &::before {
+            content: '› ';
+            color: #3085d6;
+            font-weight: bold;
+          }
+        }
+      }
+    }
+  }
+
+  .version-box {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+    background-color: #fafafa;
+
+    &.warning {
+      border-color: #ffc107;
+      background-color: #fff8e1;
+    }
+
+    .version-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      margin-top: 4px;
+    }
+  }
+
+  .spin {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .history-table {
+    font-size: 13px;
+
+    thead th {
+      font-weight: 600;
+      border-top: none;
+      border-bottom: 2px solid #dee2e6;
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 8px 12px;
+      vertical-align: middle;
+    }
+
+    tr.table-success {
+      background-color: #e8f5e9 !important;
+
+      td {
+        background-color: #e8f5e9 !important;
+      }
+
+      &:hover td {
+        background-color: #d4edda !important;
+      }
+    }
+
+    tr:not(.detail-row):hover {
+      background-color: #f5f5f5;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 4px 8px;
+
+      &.bg-success {
+        background-color: #28a745 !important;
+        color: white;
+      }
+
+      &.bg-secondary {
+        background-color: #6c757d !important;
+        color: white;
+      }
+    }
+
+    .detail-row {
+      background-color: #fafbfc;
+
+      td {
+        padding: 16px 24px;
+        border-top: none;
+      }
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px 20px;
+
+      > div {
+        small {
+          display: block;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 2px;
+        }
+
+        > div {
+          font-size: 13px;
+          word-break: break-word;
+        }
+      }
+
+      .detail-notes {
+        grid-column: 1 / -1;
+
+        > div {
+          background: white;
+          padding: 8px 10px;
+          border-radius: 4px;
+          border: 1px solid #e0e0e0;
+          white-space: pre-wrap;
+        }
+      }
+    }
+  }
+
+  .gap-2 {
+    gap: 8px;
+  }
+}

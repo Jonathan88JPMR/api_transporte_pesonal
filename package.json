@@ -1,12 +1,21 @@
 {
   "name": "transporte-personal",
-  "version": "0.0.0",
+  "version": "1.0.1",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "node scripts/update-version.js && ng serve",
+    "build": "node scripts/update-version.js && ng build --configuration=production && node scripts/register-deployment.js",
+    "build:prod": "node scripts/update-version.js && ng build --configuration=production && node scripts/register-deployment.js",
+    "build:dev": "node scripts/update-version.js && ng build --configuration=development && node scripts/register-deployment.js --skip",
+    "build:no-register": "node scripts/update-version.js && ng build --configuration=production",
+    "register-deployment": "node scripts/register-deployment.js",
+    "update-version": "node scripts/update-version.js",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "version:patch": "node scripts/version-patch.js",
+    "version:minor": "node scripts/version-minor.js",
+    "version:major": "node scripts/version-major.js",
+    "version:check": "type src/assets/version.json"
   },
   "prettier": {
     "printWidth": 100,
