@@ -115,11 +115,12 @@ export class DeploymentTrackingService {
   }
 
   /** Obtiene el despliegue activo. Detecta API y usa GET o POST. */
-  async getCurrentDeployment(): Promise<DeploymentRecord | null> {
+  async getCurrentDeployment(envOverride?: string): Promise<DeploymentRecord | null> {
     const api = this.getActiveApi();
+    const env = envOverride ?? this.environmentName;
     try {
       if (api === 'MAESTRA') {
-        const body = { appName: this.appName, environment: this.environmentName };
+        const body = { appName: this.appName, environment: env };
         const response = await lastValueFrom(
           this.http.post<DeploymentRecord | null>(this.endpointFor('current'), body)
         );
@@ -127,7 +128,7 @@ export class DeploymentTrackingService {
       } else {
         const params = new HttpParams()
           .set('appName', this.appName)
-          .set('environment', this.environmentName);
+          .set('environment', env);
         const response = await lastValueFrom(
           this.http.get<DeploymentRecord>(this.endpointFor('current'), { params })
         );
@@ -140,11 +141,12 @@ export class DeploymentTrackingService {
   }
 
   /** Obtiene el historial de despliegues. */
-  async getDeploymentHistory(take: number = 20): Promise<DeploymentRecord[]> {
+  async getDeploymentHistory(take: number = 20, envOverride?: string): Promise<DeploymentRecord[]> {
     const api = this.getActiveApi();
+    const env = envOverride ?? this.environmentName;
     try {
       if (api === 'MAESTRA') {
-        const body = { appName: this.appName, environment: this.environmentName, take };
+        const body = { appName: this.appName, environment: env, take };
         const response = await lastValueFrom(
           this.http.post<DeploymentRecord[] | null>(this.endpointFor('history'), body)
         );
@@ -152,7 +154,7 @@ export class DeploymentTrackingService {
       } else {
         const params = new HttpParams()
           .set('appName', this.appName)
-          .set('environment', this.environmentName)
+          .set('environment', env)
           .set('take', String(take));
         const response = await lastValueFrom(
           this.http.get<DeploymentRecord[]>(this.endpointFor('history'), { params })
@@ -179,8 +181,8 @@ export class DeploymentTrackingService {
     }
   }
 
-  async buildVersionAudit(localVersion: string, serverVersion: string | null): Promise<VersionAuditSnapshot> {
-    const apiDeployment = await this.getCurrentDeployment();
+  async buildVersionAudit(localVersion: string, serverVersion: string | null, envOverride?: string): Promise<VersionAuditSnapshot> {
+    const apiDeployment = await this.getCurrentDeployment(envOverride);
     const apiVersion = apiDeployment?.version ?? null;
     let promptDecisionReason = 'No hay una nueva version confirmada.';
 
@@ -208,7 +210,7 @@ export class DeploymentTrackingService {
 
     return {
       appName: this.appName,
-      environment: this.environmentName,
+      environment: envOverride ?? this.environmentName,
       localVersion,
       serverVersion,
       apiVersion,

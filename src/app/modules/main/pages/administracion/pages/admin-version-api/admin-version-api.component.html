@@ -60,10 +60,19 @@
       </div>
 
       <!-- Estado actual -->
-      <div class="alert alert-info">
-        <strong>Default del entorno:</strong> {{ defaultApi }}<br>
-        <strong>API activa ahora:</strong> {{ apiLabel(activeApi) }}<br>
-        <small class="text-muted">localStorage["version_control_api"] = {{ activeApi }}</small>
+      <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <strong>Default del entorno:</strong> {{ defaultApi }}<br>
+          <strong>API activa ahora:</strong> {{ apiLabel(activeApi) }}<br>
+          <small class="text-muted">localStorage["version_control_api"] = {{ activeApi }}</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <label class="mb-0" style="font-size: 13px;">Ambiente:</label>
+          <select class="form-control form-control-sm" style="width: 140px;"
+                  [(ngModel)]="ambienteVista" (change)="cargarEstado()">
+            <option *ngFor="let e of ambientes" [value]="e">{{ e }}</option>
+          </select>
+        </div>
       </div>
 
       <!-- Estado de versiones -->

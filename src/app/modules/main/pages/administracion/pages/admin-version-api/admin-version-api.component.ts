@@ -38,6 +38,10 @@ export class AdminVersionApiComponent implements OnInit, OnDestroy {
   audit: VersionAuditSnapshot | null = null;
   currentDeployment: DeploymentRecord | null = null;
 
+  // Ambiente consultado (en dev se puede ver lo registrado como production)
+  ambienteVista = 'production';
+  ambientes = ['production', 'development'];
+
   // Historial de deployments
   history: DeploymentRecord[] = [];
   historyTake = 20;
@@ -94,8 +98,8 @@ export class AdminVersionApiComponent implements OnInit, OnDestroy {
     try {
       this.localVersion = await this.versionSvc.getLocalVersion();
       this.serverVersion = await this.versionSvc.getServerVersion();
-      this.currentDeployment = await this.deploymentSvc.getCurrentDeployment();
-      this.audit = await this.deploymentSvc.buildVersionAudit(this.localVersion, this.serverVersion);
+      this.currentDeployment = await this.deploymentSvc.getCurrentDeployment(this.ambienteVista);
+      this.audit = await this.deploymentSvc.buildVersionAudit(this.localVersion, this.serverVersion, this.ambienteVista);
       await this.cargarHistorial();
     } catch (err) {
       console.error('Error cargando estado:', err);
@@ -107,7 +111,7 @@ export class AdminVersionApiComponent implements OnInit, OnDestroy {
   async cargarHistorial() {
     this.loadingHistory = true;
     try {
-      this.history = await this.deploymentSvc.getDeploymentHistory(this.historyTake);
+      this.history = await this.deploymentSvc.getDeploymentHistory(this.historyTake, this.ambienteVista);
     } catch (err) {
       console.error('Error cargando historial:', err);
       this.history = [];

@@ -14,7 +14,7 @@
   </div>
 </div>
 
-<div class="alert alert-info py-2" *ngIf="rutaDelDia">
+<div class="alert alert-info py-2 d-none d-md-block" *ngIf="rutaDelDia">
   <i class="pi pi-map-marker me-1"></i>
   <strong>Ruta del día:</strong> {{ rutaDelDia }}
 </div>
@@ -26,15 +26,15 @@
          styleClass="p-datatable-sm p-datatable-striped">
   <ng-template #header>
     <tr>
-      <th>HR. REQUERIDA</th>
+      <th><span class="d-md-none">HORA</span><span class="d-none d-md-inline">HR. REQUERIDA</span></th>
       <th>SOLICITA</th>
       <th>P. PARTIDA</th>
       <th>P. LLEGADA</th>
-      <th>CANTIDAD</th>
-      <th>CUPO</th>
+      <th class="text-center">CANTIDAD</th>
+      <th class="d-none d-md-table-cell">CUPO</th>
       <th>MOTIVO</th>
       <th class="d-none d-md-table-cell">PRIORIDAD</th>
-      <th>ESTADO</th>
+      <th class="d-none d-md-table-cell">ESTADO</th>
       <th>ACCIONES</th>
     </tr>
   </ng-template>
@@ -47,8 +47,11 @@
       </td>
       <td class="col-negrita">{{ s.puntoPartida }}</td>
       <td class="col-negrita">{{ s.puntoLlegada }}</td>
-      <td class="col-negrita">{{ s.cantidad }}</td>
-      <td>
+      <td class="col-negrita text-center">
+        <p-tag class="d-md-none" [value]="s.cantidad + ''" [severity]="severidadCupo(s)"></p-tag>
+        <span class="d-none d-md-inline">{{ s.cantidad }}</span>
+      </td>
+      <td class="d-none d-md-table-cell">
         <p-tag *ngIf="cupoServicio(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>
       </td>
       <td>
@@ -60,7 +63,7 @@
         <p-tag [value]="s.prioridad ?? (s.esEmergencia ? 'EMERGENCIA' : 'NORMAL')" [severity]="s.prioridad === 'EMERGENCIA' || s.esEmergencia ? 'danger' : s.prioridad === 'ALTA' ? 'warn' : 'secondary'"></p-tag>
         <p-tag *ngIf="s.esEmergencia" value="MÉDICA" severity="danger" icon="pi pi-heart" class="ms-1"></p-tag>
       </td>
-      <td>
+      <td class="d-none d-md-table-cell">
         <p-tag [value]="s.estado" [severity]="s.estado === 'REALIZADO' ? 'success' : s.estado === 'EN_RUTA' ? 'info' : 'warn'"></p-tag>
         <div class="small text-muted mt-1" *ngIf="s.paradas?.length">
           <i class="pi pi-flag"></i> Paradas {{ resumenParadas(s) }}
