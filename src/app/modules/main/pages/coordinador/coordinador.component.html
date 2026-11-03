@@ -1,20 +1,27 @@
-<div class="page-header mb-3">
-  <h5 class="mb-0">Coordinación de movilidades</h5>
-  <small class="text-muted">Asigne unidades, una solicitudes en un solo traslado o sepárelas</small>
+<div class="page-header mb-3 d-flex justify-content-between align-items-center">
+  <div>
+    <h5 class="mb-0">Coordinación de movilidades</h5>
+    <small class="text-muted">Asigne unidades, una solicitudes en un solo traslado o sepárelas</small>
+  </div>
+  <button class="btn btn-outline-secondary btn-sm text-nowrap" (click)="mostrarTraslados = !mostrarTraslados"
+          [pTooltip]="mostrarTraslados ? 'Ocultar panel de traslados' : 'Mostrar panel de traslados'" tooltipPosition="left">
+    <i class="pi me-1" [class.pi-eye-slash]="mostrarTraslados" [class.pi-eye]="!mostrarTraslados"></i>
+    Traslados ({{ trasladosActivos.length }})
+  </button>
 </div>
 
 <div class="row g-3">
-  <div class="col-lg-8">
+  <div [ngClass]="mostrarTraslados ? 'col-lg-8' : 'col-12'">
     <div class="card">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="d-flex align-items-center gap-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
             <h6 class="mb-0">Solicitudes</h6>
             <input type="date" class="form-control form-control-sm" style="width: auto"
                    [(ngModel)]="fechaFiltro" (change)="alCambiarFecha()" />
             <button class="btn btn-outline-secondary btn-sm" *ngIf="fechaFiltro" (click)="verTodas()">Todas</button>
             <button class="btn btn-outline-secondary btn-sm" *ngIf="!fechaFiltro" (click)="verHoy()">Hoy</button>
-            <span *ngIf="pendientesOtrosDias() > 0" style="cursor: pointer"
+            <span *ngIf="pendientesOtrosDias() > 0" style="cursor: pointer" class="text-nowrap"
                   pTooltip="Ir a la fecha pendiente más antigua" tooltipPosition="top"
                   (click)="irAPendienteAntiguo()">
               <p-tag severity="warn" [value]="'Pendientes: ' + resumenPendientes()"></p-tag>
@@ -58,6 +65,14 @@
           </li>
         </ul>
 
+        <!-- Leyenda del indicador de avance del servicio (columna ACCIONES) -->
+        <div class="d-flex flex-wrap gap-3 small text-muted mb-2">
+          <span><span class="ind-estado est-recibido me-1"></span>Mensaje al conductor</span>
+          <span><span class="ind-estado est-enruta me-1"></span>Presionó iniciar</span>
+          <span><span class="ind-estado est-abordo me-1"></span>Recogió al personal</span>
+          <span><span class="ind-estado est-entregado me-1"></span>Dejó al personal</span>
+        </div>
+
         <p-table [value]="solicitudesFiltradas()" [loading]="cargando" [rowHover]="true"
                  [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5, 10, 20, 50]"
                  [showCurrentPageReport]="true"
@@ -67,14 +82,16 @@
             <tr>
               <th style="width: 40px"></th>
               <th>NOMBRE</th>
-              <th>FECHA</th>
+              <!-- En modo "Todas" las solicitudes son de distintas fechas -->
+              <th *ngIf="!fechaFiltro">FECHA</th>
+              <th>HR. REG.</th>
               <th>HR. REQ.</th>
               <th>P. PARTIDA</th>
               <th>P. LLEGADA</th>
               <th>CANT.</th>
               <th>MOTIVO</th>
               <th>PLACA</th>
-              <th>TRASLADO</th>
+              <th *ngIf="mostrarTraslados">TRASLADO</th>
               <th>ACCIONES</th>
             </tr>
           </ng-template>
@@ -87,7 +104,8 @@
                             [(ngModel)]="seleccionadas" [binary]="false"></p-checkbox>
               </td>
               <td>{{ s.nombre }}</td>
-              <td>{{ s.fechaProgramada | date:'dd/MM' }}</td>
+              <td *ngIf="!fechaFiltro">{{ s.fechaProgramada | date:'dd/MM' }}</td>
+              <td>{{ s.fechaRegistro ? (s.fechaRegistro | date:'HH:mm') : s.horaProgramada }}</td>
               <td>{{ s.horaRequerida || s.horaProgramada }}</td>
               <td>{{ s.puntoPartida }}</td>
               <td>{{ s.puntoLlegada }}</td>
@@ -103,7 +121,7 @@
                        [pTooltip]="detalleUnidades(s)" tooltipPosition="top" tooltipStyleClass="tooltip-multilinea"></p-tag>
                 <ng-container *ngIf="s.placa !== 'MULTIPLE'">{{ s.placa }}</ng-container>
               </td>
-              <td>
+              <td *ngIf="mostrarTraslados">
                 <p-tag *ngIf="s.idTraslado" [value]="'T-' + s.idTraslado" severity="info" class="tag-link"
                        (click)="verTraslado(s)"
                        [pTooltip]="esTrasladoActivo(s.idTraslado) ? 'Ver en Traslados activos' : 'Ver resumen del traslado'"
@@ -117,6 +135,10 @@
                 </ng-container>
               </td>
               <td>
+                <div class="d-flex gap-1 align-items-center mb-1" *ngIf="indicadores(s).length">
+                  <span *ngFor="let ind of indicadores(s)" class="ind-estado" [ngClass]="ind.clase"
+                        [pTooltip]="ind.texto" tooltipPosition="top"></span>
+                </div>
                 <div class="d-flex gap-1 align-items-center" *ngIf="tabEstado === 'ACTIVAS' && !s.idTraslado && s.estado === 'PENDIENTE'">
                   <p-select [options]="unidadesOpcionesFecha(s.fechaProgramada)" optionLabel="etiqueta" optionValue="placa" optionDisabled="sinCupo"
                             [(ngModel)]="placasAsignar[s.idSolicitud]" placeholder="Placa"
@@ -153,14 +175,14 @@
             </tr>
           </ng-template>
           <ng-template #emptymessage>
-            <tr><td colspan="10" class="text-center text-muted">No hay solicitudes</td></tr>
+            <tr><td [attr.colspan]="10 + (fechaFiltro ? 0 : 1) + (mostrarTraslados ? 1 : 0)" class="text-center text-muted">No hay solicitudes</td></tr>
           </ng-template>
         </p-table>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-4">
+  <div class="col-lg-4" *ngIf="mostrarTraslados">
     <div class="card">
       <div class="card-body">
         <h6>Traslados activos</h6>

@@ -37,6 +37,35 @@ tr.fila-emergencia {
   cursor: pointer;
 }
 
+// Indicador de avance del servicio en la columna ACCIONES
+.ind-estado {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #6c757d;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.est-recibido {
+  background-color: #fff;
+}
+
+.est-enruta {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.est-abordo {
+  background-color: #ffc107;
+  border-color: #ffc107;
+}
+
+.est-entregado {
+  background-color: #198754;
+  border-color: #198754;
+}
+
 .ruta {
   color: #238664;
 }

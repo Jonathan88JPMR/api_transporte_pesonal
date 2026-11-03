@@ -48,6 +48,10 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     return this.traslados.filter(t => t.estado !== 'REALIZADO');
   }
 
+  // Panel lateral de traslados: el coordinador puede ocultarlo para
+  // darle todo el ancho a la tabla de solicitudes
+  mostrarTraslados = true;
+
   // Sección colapsable: traslados finalizados del día — solo consulta
   // (progreso, mapa, OSM, ruta en solo lectura), no gestión
   mostrarFinalizados = false;
@@ -84,6 +88,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
   trasladoDestacado?: number;
   verTraslado(item: { idTraslado?: number | null }) {
     if (!item.idTraslado) return;
+    this.mostrarTraslados = true;
     const idx = this.trasladosActivos.findIndex(t => t.idTraslado === item.idTraslado);
     if (idx >= 0) {
       this.trasladoDestacado = item.idTraslado;
@@ -185,6 +190,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
       this.paginaFinalizados = 0;
       this.anuladasCargadas = false; // el tab Anuladas se recarga al abrirse
       void this.cargarPorciones();
+      void this.cargarProgresoServicios();
     } catch {
       this.alertService.showAlert('error', 'No se pudieron cargar los datos', 'Error');
     } finally {
@@ -355,13 +361,13 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
   // Solicitudes repartidas en varias unidades: porciones por placa.
   // Desde listarSolicitudes llegan en s.porciones (con su idTraslado);
   // este mapa queda como respaldo construido desde conductor/servicios.
-  porcionesPorSolicitud: Record<number, { placa: string; cantidad: number; estado: string; idTraslado?: number | null }[]> = {};
+  porcionesPorSolicitud: Record<number, { placa: string; cantidad: number; estado: string; idTraslado?: number | null; idSolicitudUnidad?: number | null }[]> = {};
   // Ocupación real por placa y fecha (ASIGNADO/EN_RUTA); el cupoDisponible
   // del catálogo no descuenta asignaciones pendientes.
   ocupaciones: Record<string, Record<string, number>> = {};
 
   async cargarPorciones() {
-    const mapa: Record<number, { placa: string; cantidad: number; estado: string; idTraslado?: number | null }[]> = {};
+    const mapa: Record<number, { placa: string; cantidad: number; estado: string; idTraslado?: number | null; idSolicitudUnidad?: number | null }[]> = {};
     const ocup: Record<string, Record<string, number>> = {};
     const porPlaca = await this.transporteService.serviciosPorPlacas(this.unidades.map(u => u.placa));
     for (const { placa, servicios } of porPlaca) {
@@ -372,7 +378,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
           porFecha[f] = (porFecha[f] ?? 0) + (s.cantidad ?? 0);
         }
         if (s.idSolicitudUnidad != null) {
-          (mapa[s.idSolicitud] ??= []).push({ placa, cantidad: s.cantidad, estado: s.estado, idTraslado: s.idTraslado ?? null });
+          (mapa[s.idSolicitud] ??= []).push({ placa, cantidad: s.cantidad, estado: s.estado, idTraslado: s.idTraslado ?? null, idSolicitudUnidad: s.idSolicitudUnidad ?? null });
         }
       }
     }
@@ -380,10 +386,64 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     this.ocupaciones = ocup;
   }
 
-  unidadesDe(s: Solicitud): { placa: string; cantidad: number; estado: string; idTraslado?: number | null }[] {
+  unidadesDe(s: Solicitud): { placa: string; cantidad: number; estado: string; idTraslado?: number | null; idSolicitudUnidad?: number | null }[] {
     if (s.porciones?.length)
-      return s.porciones.map(p => ({ placa: p.placa, cantidad: p.cantidadAsignada, estado: p.estado, idTraslado: p.idTraslado }));
+      return s.porciones.map(p => ({ placa: p.placa, cantidad: p.cantidadAsignada, estado: p.estado, idTraslado: p.idTraslado, idSolicitudUnidad: p.idSolicitudUnidad }));
     return this.porcionesPorSolicitud[s.idSolicitud] ?? [];
+  }
+
+  // ===== Indicador de avance del servicio (columna ACCIONES) =====
+  // Avance real por solicitud/porción tomado del detalle de paradas del
+  // endpoint traslados/progreso: 'S' registrada = subió, 'B' = bajó.
+  // Clave: idSolicitudUnidad cuando existe (MULTIPLE), si no idSolicitud.
+  progresoServicios: Record<number, 'A_BORDO' | 'ENTREGADO'> = {};
+
+  private async cargarProgresoServicios() {
+    const mapa: Record<number, 'A_BORDO' | 'ENTREGADO'> = {};
+    await Promise.all(this.trasladosActivos.map(async t => {
+      try {
+        const p = await this.transporteService.progresoTraslado(t.idTraslado);
+        for (const par of p?.paradas ?? []) {
+          for (const d of par.detalle ?? []) {
+            if (d.cantidadReal == null) continue;
+            const clave = d.idSolicitudUnidad ?? d.idSolicitud;
+            if (d.tipo === 'B' || mapa[clave] !== 'ENTREGADO') {
+              mapa[clave] = d.tipo === 'B' ? 'ENTREGADO' : 'A_BORDO';
+            }
+          }
+        }
+      } catch { }
+    }));
+    this.progresoServicios = mapa;
+  }
+
+  // Fase visible: recibido (vacío) → enruta (rojo) → abordo (amarillo) → entregado (verde)
+  private faseDe(estado: string | null | undefined, ...claves: (number | null | undefined)[]):
+    'recibido' | 'enruta' | 'abordo' | 'entregado' | null {
+    const prog = claves.map(c => c != null ? this.progresoServicios[c] : undefined).find(x => x != null);
+    if (estado === 'REALIZADO' || prog === 'ENTREGADO') return 'entregado';
+    if (estado === 'EN_RUTA') return prog === 'A_BORDO' ? 'abordo' : 'enruta';
+    if (estado === 'ASIGNADO') return 'recibido';
+    return null;
+  }
+
+  // Un cuadrado por servicio; cuando la solicitud está repartida en varias
+  // unidades (MULTIPLE), un cuadrado por porción con su placa en el tooltip
+  indicadores(s: Solicitud): { clase: string; texto: string }[] {
+    const textos = {
+      recibido: 'Mensaje enviado al conductor',
+      enruta: 'Presionó iniciar',
+      abordo: 'Recogió al personal',
+      entregado: 'Dejó al personal'
+    } as const;
+    if (s.placa === 'MULTIPLE') {
+      return this.unidadesDe(s)
+        .map(u => ({ fase: this.faseDe(u.estado, u.idSolicitudUnidad, s.idSolicitud), placa: u.placa }))
+        .filter(x => !!x.fase)
+        .map(x => ({ clase: 'est-' + x.fase, texto: `${x.placa}: ${textos[x.fase!]}` }));
+    }
+    const fase = this.faseDe(s.estado, s.idSolicitudUnidad, s.idSolicitud);
+    return fase ? [{ clase: 'est-' + fase, texto: textos[fase] }] : [];
   }
 
   detalleUnidades(s: Solicitud): string {
