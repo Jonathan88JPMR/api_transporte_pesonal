@@ -88,7 +88,7 @@
               <th>HR. REQ.</th>
               <th>P. PARTIDA</th>
               <th>P. LLEGADA</th>
-              <th>CANT.</th>
+              <th class="text-center"><span class="d-md-none">CANT.</span><span class="d-none d-md-inline">CANTIDAD</span></th>
               <th>MOTIVO</th>
               <th>PLACA</th>
               <th *ngIf="mostrarTraslados">TRASLADO</th>
@@ -106,10 +106,12 @@
               <td>{{ s.nombre }}</td>
               <td *ngIf="!fechaFiltro">{{ s.fechaProgramada | date:'dd/MM' }}</td>
               <td>{{ s.fechaRegistro ? (s.fechaRegistro | date:'HH:mm') : s.horaProgramada }}</td>
-              <td>{{ s.horaRequerida || s.horaProgramada }}</td>
-              <td>{{ s.puntoPartida }}</td>
-              <td>{{ s.puntoLlegada }}</td>
-              <td>{{ s.cantidad }}</td>
+              <td class="col-negrita">{{ s.horaRequerida || s.horaProgramada }}</td>
+              <td class="col-negrita">{{ s.puntoPartida }}</td>
+              <td class="col-negrita">{{ s.puntoLlegada }}</td>
+              <td class="col-negrita text-center">
+                <p-tag [value]="s.cantidad + ''" severity="success"></p-tag>
+              </td>
               <td>
                 {{ s.motivo }}
                 <p-tag *ngIf="s.prioridad === 'EMERGENCIA'" value="EMERGENCIA" severity="danger" class="ms-1"></p-tag>
@@ -160,10 +162,12 @@
                     <i class="pi pi-times"></i><span class="accion-label">Anular</span>
                   </button>
                 </div>
+                <!-- TEMPORALMENTE OCULTO: separar solicitud del traslado
                 <button *ngIf="tabEstado === 'ACTIVAS' && s.idTraslado" class="btn btn-sm btn-outline-danger" (click)="separar(s)"
                         pTooltip="Separar del traslado" tooltipPosition="top">
                   <i class="pi pi-unlink"></i><span class="accion-label">Separar</span>
                 </button>
+                -->
                 <div class="d-flex gap-1 align-items-center" *ngIf="!s.idTraslado && s.estado !== 'PENDIENTE' && s.estado !== 'ANULADO'">
                   <p-tag [value]="s.estado" [severity]="severidadEstado(s.estado)"></p-tag>
                   <button *ngIf="s.estado === 'ASIGNADO'" class="btn btn-sm btn-outline-warning" (click)="desasignar(s)"

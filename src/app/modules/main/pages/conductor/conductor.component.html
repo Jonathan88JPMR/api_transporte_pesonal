@@ -30,7 +30,7 @@
       <th>SOLICITA</th>
       <th>P. PARTIDA</th>
       <th>P. LLEGADA</th>
-      <th class="text-center">CANTIDAD</th>
+      <th class="text-center"><span class="d-md-none">CANT.</span><span class="d-none d-md-inline">CANTIDAD</span></th>
       <th class="d-none d-md-table-cell">CUPO</th>
       <th>MOTIVO</th>
       <th class="d-none d-md-table-cell">PRIORIDAD</th>
@@ -48,8 +48,7 @@
       <td class="col-negrita">{{ s.puntoPartida }}</td>
       <td class="col-negrita">{{ s.puntoLlegada }}</td>
       <td class="col-negrita text-center">
-        <p-tag class="d-md-none" [value]="s.cantidad + ''" [severity]="severidadCupo(s)"></p-tag>
-        <span class="d-none d-md-inline">{{ s.cantidad }}</span>
+        <p-tag [value]="s.cantidad + ''" severity="success"></p-tag>
       </td>
       <td class="d-none d-md-table-cell">
         <p-tag *ngIf="cupoServicio(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>

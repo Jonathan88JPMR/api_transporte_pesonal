@@ -70,6 +70,10 @@ tr.fila-emergencia {
   color: #238664;
 }
 
+.col-negrita {
+  font-weight: 700;
+}
+
 :host ::ng-deep .tooltip-multilinea .p-tooltip-text {
   white-space: pre-line;
 }

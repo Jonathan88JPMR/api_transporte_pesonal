@@ -184,6 +184,10 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     return 'bg-success';
   }
 
+  // Vista del supervisor: las columnas HR. SOLICITUD y CUPO se ocultan
+  // (el administrador sí las ve)
+  get esSupervisor(): boolean { return this.usuario?.idrol === 'SPTRANS'; }
+
   // Las solicitudes de otras áreas son de solo lectura: Editar/Anular/Acoplar
   // solo aparece en las propias (el SP de acoplar además lo valida por área)
   esPropia(s?: Solicitud): boolean {

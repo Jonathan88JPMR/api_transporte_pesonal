@@ -172,10 +172,11 @@ export class ConductorComponent implements OnInit, OnDestroy {
 
   verMapa(s: Solicitud) {
     const puntos = this.puntosMapaServicio(s);
-    if (!puntos.length) {
-      this.alertService.showAlert('warning', 'La ruta no tiene puntos con coordenadas registradas', 'Atención');
-      return;
-    }
+    // TEMPORALMENTE DESACTIVADO: el checklist de paradas no requiere coordenadas
+    // if (!puntos.length) {
+    //   this.alertService.showAlert('warning', 'La ruta no tiene puntos con coordenadas registradas', 'Atención');
+    //   return;
+    // }
     if (this.servicioMapa?.idSolicitud === s.idSolicitud) {
       this.servicioMapa = undefined;
       this.puntosMapaSel = [];
