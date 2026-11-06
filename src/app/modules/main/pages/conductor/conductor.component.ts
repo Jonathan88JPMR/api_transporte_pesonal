@@ -52,7 +52,7 @@ export class ConductorComponent implements OnInit, OnDestroy {
   agregandoParada = false;
   paradaNuevaPunto?: string;
   paradaNuevaCantidad = 1;
-  // Ping GPS cada 30 s mientras la unidad tenga servicios EN_RUTA
+  // Ping GPS cada 30 s mientras la unidad tenga servicios EN_RUTA/A_BORDO
   private timerGps?: ReturnType<typeof setInterval>;
 
   constructor(
@@ -81,13 +81,13 @@ export class ConductorComponent implements OnInit, OnDestroy {
     this.mediaQuery.removeEventListener('change', this.alCambiarMedia);
   }
 
-  // Ubicación en vivo: se reporta a cada traslado EN_RUTA de la unidad
+  // Ubicación en vivo: se reporta a cada traslado EN_RUTA/A_BORDO de la unidad
   // (una solicitud multi-unidad puede tener varios traslados por placa).
   private reportarGps() {
     if (!navigator.geolocation || !this.usuario?.placa) return;
     const traslados = new Set(
       this.servicios
-        .filter(s => s.estado === 'EN_RUTA' && s.idTraslado != null)
+        .filter(s => (s.estado === 'EN_RUTA' || s.estado === 'A_BORDO') && s.idTraslado != null)
         .map(s => s.idTraslado!)
     );
     if (!traslados.size) return;
@@ -120,16 +120,15 @@ export class ConductorComponent implements OnInit, OnDestroy {
     }
   }
 
-  async cambiarEstado(s: Solicitud, estado: 'ASIGNADO' | 'EN_RUTA' | 'REALIZADO') {
-    // Aviso preventivo: no se puede finalizar con paradas sin procesar
+  async cambiarEstado(s: Solicitud, estado: 'ASIGNADO' | 'EN_RUTA' | 'A_BORDO' | 'REALIZADO') {
+    // Al finalizar, el backend cierra las paradas pendientes con los datos
+    // programados: se avisa al conductor antes de confirmar.
     if (estado === 'REALIZADO') {
       const pendientes = this.paradasPendientes(s);
       if (pendientes.length) {
-        const nombres = pendientes.map(p => `${p.orden}. ${p.punto}`).join(', ');
-        this.alertService.showAlert('warning',
-          `${pendientes.length === 1 ? 'Falta' : 'Faltan'} ${pendientes.length} parada${pendientes.length > 1 ? 's' : ''} por procesar: ${nombres}. Registre u omita cada una desde "Paradas" antes de finalizar.`,
-          'Servicio incompleto');
-        return;
+        const ok = await this.alertService.confirm('Dejar personal',
+          `Quedan ${pendientes.length} parada${pendientes.length > 1 ? 's' : ''} sin procesar. Se cerrarán con los datos programados y el servicio quedará realizado. ¿Desea continuar?`);
+        if (!ok) return;
       }
     }
     try {
@@ -219,7 +218,13 @@ export class ConductorComponent implements OnInit, OnDestroy {
 
   // Solo se marcan paradas con la unidad en ruta
   puedeMarcarParadas(s: Solicitud): boolean {
-    return s.estado === 'EN_RUTA' && !!this.paradaActual(s);
+    return this.enCurso(s) && !!this.paradaActual(s);
+  }
+
+  // Servicio en viaje: EN_RUTA (yendo al recojo o recorriendo paradas)
+  // o A_BORDO (personal a bordo rumbo al destino)
+  enCurso(s: Solicitud): boolean {
+    return s.estado === 'EN_RUTA' || s.estado === 'A_BORDO';
   }
 
   resumenParadas(s: Solicitud): string {
@@ -363,7 +368,7 @@ export class ConductorComponent implements OnInit, OnDestroy {
     const unidad = this.unidades.find(u => u.placa === this.usuario?.placa);
     if (!unidad) return null;
     const ocupada = this.servicios
-      .filter(x => x.fechaProgramada === s.fechaProgramada && (x.estado === 'ASIGNADO' || x.estado === 'EN_RUTA'))
+      .filter(x => x.fechaProgramada === s.fechaProgramada && (x.estado === 'ASIGNADO' || this.enCurso(x)))
       .reduce((a, x) => a + (x.cantidad ?? 0), 0);
     return { ocupada, libre: unidad.capacidad - ocupada, capacidad: unidad.capacidad };
   }
@@ -385,8 +390,9 @@ export class ConductorComponent implements OnInit, OnDestroy {
     if (!s || this.pasajerosExtra < 1) return;
     const cupo = this.cupoServicio(s);
     if (cupo && this.pasajerosExtra > cupo.libre) {
-      this.alertService.showAlert('warning', `La unidad solo tiene ${cupo.libre} asientos libres`, 'Sin cupo');
-      return;
+      const ok = await this.alertService.confirm('Unidad sin cupo',
+        `La unidad solo tiene ${Math.max(cupo.libre, 0)} asientos libres. ¿Agregar ${this.pasajerosExtra} pasajero(s) de todos modos?`);
+      if (!ok) return;
     }
     try {
       // Si el servicio tiene ruta con paradas, el extra se amarra a la parada actual

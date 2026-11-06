@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — Flujo conductor ↔ coordinador</title>
+<style>
+  :root {
+    --verde: #238664;
+    --primary: #0d6efd;
+    --success: #198754;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --info: #0dcaf0;
+    --gray: #6c757d;
+    --border: #dee2e6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    background: #f4f6f8;
+    color: #212529;
+  }
+  header {
+    background: var(--verde);
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .btn-reset {
+    border: 1px solid #fff;
+    background: transparent;
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .btn-reset:hover { background: rgba(255,255,255,.15); }
+  .nota {
+    width: 100%;
+    font-size: 12.5px;
+    color: #fdf3d7;
+  }
+
+  .panels {
+    display: grid;
+    grid-template-columns: minmax(430px, 1fr) minmax(430px, 1.15fr);
+    gap: 16px;
+    padding: 16px 20px;
+    align-items: start;
+  }
+  @media (max-width: 1000px) { .panels { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .panel-head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .panel-head h2 { margin: 0; font-size: 15px; }
+  .panel-head small { color: var(--gray); }
+  .rol {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: #fff;
+  }
+  .rol-conductor { background: var(--gray); }
+  .rol-coordinador { background: var(--verde); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th {
+    text-align: left;
+    color: var(--gray);
+    font-size: 10.5px;
+    letter-spacing: .4px;
+    padding: 8px 8px;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  td { padding: 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr.realizada td { background: #eafaf0; }
+  tr.emergencia td { background: #fff5f5; }
+  .negrita { font-weight: 600; }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 2px 7px;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .tag-success { background: var(--success); }
+  .tag-warn { background: #fd7e14; }
+  .tag-warning { background: var(--warning); color: #3d3405; }
+  .tag-info { background: var(--info); color: #083344; }
+  .tag-danger { background: var(--danger); }
+
+  .acciones { display: flex; gap: 5px; flex-wrap: wrap; }
+  .btn {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); }
+  .btn-success { background: var(--success); }
+  .btn-warning { background: var(--warning); color: #3d3405; }
+  .btn-outline-danger { background: #fff; border-color: var(--danger); color: var(--danger); }
+  .btn-outline-info { background: #fff; border-color: var(--info); color: #0a7b94; }
+
+  .ind-estado {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--gray);
+    border-radius: 3px;
+    vertical-align: middle;
+  }
+  .est-recibido { background: #fff; }
+  .est-enruta { background: var(--danger); border-color: var(--danger); }
+  .est-abordo { background: var(--warning); border-color: var(--warning); }
+  .est-entregado { background: var(--success); border-color: var(--success); }
+  .leyenda {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    padding: 8px 16px;
+    font-size: 12px; color: var(--gray);
+    border-bottom: 1px solid var(--border);
+  }
+  .ind-wrap { display: flex; align-items: center; gap: 6px; }
+  .ind-texto { font-size: 11.5px; color: var(--gray); }
+
+  .log {
+    margin: 0 20px 18px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    max-height: 170px;
+    overflow: auto;
+  }
+  .log h3 { margin: 0 0 6px; font-size: 13px; }
+  .log div { font-size: 12px; font-family: Consolas, monospace; padding: 2px 0; color: #444; }
+  .flash { animation: flash .6s; }
+  @keyframes flash { 0% { background: #fff8d6; } 100% { background: transparent; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mockup — Flujo conductor ↔ coordinador</h1>
+  <button class="btn-reset" onclick="reiniciar()">↺ Reiniciar</button>
+  <div class="nota">Flujo implementado: ASIGNADO → <b>Iniciar recojo</b> → EN_RUTA → <b>Recojo</b> → A_BORDO → <b>Dejar personal</b> → REALIZADO. El coordinador ve las 4 fases en tiempo real.</div>
+</header>
+
+<div class="panels">
+  <!-- ============ CONDUCTOR ============ -->
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Mis servicios</h2>
+        <small>Unidad: T8A-126</small>
+      </div>
+      <span class="rol rol-conductor">CONDUCTOR</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>HR. REQ.</th><th>SOLICITA</th><th>P. PARTIDA</th><th>P. LLEGADA</th>
+          <th style="text-align:center">CANT.</th><th>MOTIVO</th><th>ESTADO</th><th>ACCIONES</th>
+        </tr>
+      </thead>
+      <tbody id="tablaConductor"></tbody>
+    </table>
+  </section>
+
+  <!-- ============ COORDINADOR ============ -->
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Coordinación de movilidades</h2>
+        <small>05/11/2026</small>
+      </div>
+      <span class="rol rol-coordinador">COORDINADOR</span>
+    </div>
+    <div class="leyenda">
+      <span class="ind-wrap"><span class="ind-estado est-recibido"></span>Mensaje al conductor</span>
+      <span class="ind-wrap"><span class="ind-estado est-enruta"></span>Presionó iniciar</span>
+      <span class="ind-wrap"><span class="ind-estado est-abordo"></span>Recogió al personal</span>
+      <span class="ind-wrap"><span class="ind-estado est-entregado"></span>Dejó al personal</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>NOMBRE</th><th>HR. REQ.</th><th>P. PARTIDA</th><th>P. LLEGADA</th>
+          <th style="text-align:center">CANT.</th><th>MOTIVO</th><th>PLACA</th><th>ACCIONES</th>
+        </tr>
+      </thead>
+      <tbody id="tablaCoordinador"></tbody>
+    </table>
+  </section>
+</div>
+
+<div class="log">
+  <h3>Eventos (lo que se registra en backend / auditoría)</h3>
+  <div id="logItems"></div>
+</div>
+
+<script>
+const serviciosIniciales = [
+  { id: 1, hora: '10:26', nombre: 'Luna', area: 'Apicultura', partida: 'Apicultura', llegada: 'Comedor 3', cant: 1, motivo: 'Emergencia', estado: 'ASIGNADO' },
+  { id: 2, hora: '10:28', nombre: 'Lesly', area: 'Acopio 7',   partida: 'Acopio 7',   llegada: 'Comedor 2', cant: 1, motivo: 'Capacitación', estado: 'ASIGNADO' },
+];
+let servicios = [];
+let log = [];
+
+function reiniciar() {
+  servicios = serviciosIniciales.map(s => ({ ...s }));
+  log = [];
+  render();
+}
+
+function registrarEvento(txt) {
+  const h = new Date();
+  const hh = String(h.getHours()).padStart(2,'0') + ':' + String(h.getMinutes()).padStart(2,'0') + ':' + String(h.getSeconds()).padStart(2,'0');
+  log.unshift(`${hh} · ${txt}`);
+  render();
+}
+
+// ---- acciones del conductor (cambiarEstado) ----
+function iniciarRecojo(s) {
+  s.estado = 'EN_RUTA';
+  registrarEvento(`#${s.id} (${s.nombre}): "Iniciar recojo" → estado EN_RUTA. Coordinador: ROJO "Presionó iniciar".`);
+}
+function recogioPersonal(s) {
+  s.estado = 'A_BORDO';
+  registrarEvento(`#${s.id} (${s.nombre}): "Recojo" → estado A_BORDO. Coordinador: AMARILLO "Recogió al personal".`);
+}
+function dejarPersonal(s) {
+  s.estado = 'REALIZADO';
+  registrarEvento(`#${s.id} (${s.nombre}): "Dejar personal" → estado REALIZADO. Coordinador: VERDE "Dejó al personal".`);
+}
+
+// ---- render ----
+function tagEstado(s) {
+  if (s.estado === 'REALIZADO') return '<span class="tag tag-success">REALIZADO</span>';
+  if (s.estado === 'A_BORDO')   return '<span class="tag tag-warning">A_BORDO</span>';
+  if (s.estado === 'EN_RUTA')   return '<span class="tag tag-info">EN_RUTA</span>';
+  return '<span class="tag tag-warn">ASIGNADO</span>';
+}
+
+function botonesConductor(s) {
+  let b = '';
+  if (s.estado === 'ASIGNADO') {
+    b += `<button class="btn btn-primary" onclick="accion(${s.id},'iniciar')">▶ Iniciar recojo</button>`;
+  }
+  if (s.estado === 'EN_RUTA') {
+    b += `<button class="btn btn-warning" onclick="accion(${s.id},'recogio')">👥 Recojo</button>`;
+  }
+  if (s.estado === 'A_BORDO') {
+    b += `<button class="btn btn-success" onclick="accion(${s.id},'dejar')">✔ Dejar personal</button>`;
+  }
+  if (s.estado !== 'REALIZADO') {
+    b += `<button class="btn btn-outline-danger" title="Agregar pasajeros de emergencia">+ Pasajeros</button>`;
+    b += `<button class="btn btn-outline-info" title="Ver checklist de paradas">⚑ Paradas</button>`;
+  }
+  return b || '<span class="ind-texto">—</span>';
+}
+
+function faseCoordinador(s) {
+  if (s.estado === 'REALIZADO') return ['est-entregado', 'Dejó al personal'];
+  if (s.estado === 'A_BORDO')   return ['est-abordo', 'Recogió al personal'];
+  if (s.estado === 'EN_RUTA')   return ['est-enruta', 'Presionó iniciar'];
+  return ['est-recibido', 'Mensaje enviado al conductor'];
+}
+
+function render() {
+  document.getElementById('tablaConductor').innerHTML = servicios.map(s => `
+    <tr class="${s.estado === 'REALIZADO' ? 'realizada' : ''} ${s.motivo === 'Emergencia' ? 'emergencia' : ''}">
+      <td class="negrita">${s.hora}</td>
+      <td>${s.nombre}<div style="font-size:10.5px;color:var(--gray)">${s.area}</div></td>
+      <td class="negrita">${s.partida}</td>
+      <td class="negrita">${s.llegada}</td>
+      <td style="text-align:center"><span class="tag tag-success">${s.cant}</span></td>
+      <td>${s.motivo === 'Emergencia' ? '<b style="color:var(--danger)">EMERGENCIA</b>' : s.motivo}</td>
+      <td>${tagEstado(s)}</td>
+      <td><div class="acciones">${botonesConductor(s)}</div></td>
+    </tr>`).join('');
+
+  document.getElementById('tablaCoordinador').innerHTML = servicios.map(s => {
+    const [clase, texto] = faseCoordinador(s);
+    return `
+    <tr class="${s.estado === 'REALIZADO' ? 'realizada' : ''} ${s.motivo === 'Emergencia' ? 'emergencia' : ''}">
+      <td>${s.nombre}</td>
+      <td class="negrita">${s.hora}</td>
+      <td class="negrita">${s.partida}</td>
+      <td class="negrita">${s.llegada}</td>
+      <td style="text-align:center"><span class="tag tag-success">${s.cant}</span></td>
+      <td>${s.motivo === 'Emergencia' ? s.motivo + ' <span class="tag tag-danger">EMERGENCIA</span>' : s.motivo}</td>
+      <td>T8A-126</td>
+      <td>
+        <div class="ind-wrap flash" title="${texto}">
+          <span class="ind-estado ${clase}"></span>
+          <span class="ind-texto">${texto}</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('logItems').innerHTML = log.length
+    ? log.map(l => `<div>› ${l}</div>`).join('')
+    : '<div style="color:#999">Sin eventos todavía. Presiona los botones del conductor.</div>';
+}
+
+function accion(id, que) {
+  const s = servicios.find(x => x.id === id);
+  if (que === 'iniciar') iniciarRecojo(s);
+  if (que === 'recogio') recogioPersonal(s);
+  if (que === 'dejar')   dejarPersonal(s);
+}
+
+reiniciar();
+</script>
+</body>
+</html>

@@ -3,15 +3,15 @@
     <h5 class="mb-0">Coordinación de movilidades</h5>
     <small class="text-muted">Asigne unidades, una solicitudes en un solo traslado o sepárelas</small>
   </div>
-  <button class="btn btn-outline-secondary btn-sm text-nowrap" (click)="mostrarTraslados = !mostrarTraslados"
+  <!-- <button class="btn btn-outline-secondary btn-sm text-nowrap" (click)="mostrarTraslados = !mostrarTraslados"
           [pTooltip]="mostrarTraslados ? 'Ocultar panel de traslados' : 'Mostrar panel de traslados'" tooltipPosition="left">
     <i class="pi me-1" [class.pi-eye-slash]="mostrarTraslados" [class.pi-eye]="!mostrarTraslados"></i>
     Traslados ({{ trasladosActivos.length }})
-  </button>
+  </button> -->
 </div>
 
 <div class="row g-3">
-  <div [ngClass]="mostrarTraslados ? 'col-lg-8' : 'col-12'">
+  <div class="col-12"><!-- antes: [ngClass]="mostrarTraslados ? 'col-lg-8' : 'col-12'" — panel de traslados comentado -->
     <div class="card">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
@@ -33,7 +33,7 @@
             </span>
             <p-select [options]="unidadesOpcionesFecha(fechasUnir()[0])" optionLabel="etiqueta" optionValue="placa" optionDisabled="sinCupo"
                       [(ngModel)]="placaUnir" placeholder="Placa del traslado" appendTo="body" styleClass="p-select-sm"></p-select>
-            <button class="btn btn-primary btn-sm" (click)="unir()" [disabled]="seleccionadas.length < 2 || excedeCupoUnir()">
+            <button class="btn btn-primary btn-sm" (click)="unir()" [disabled]="seleccionadas.length < 2">
               <i class="pi pi-link me-1"></i> Unir ({{ seleccionadas.length }})
             </button>
           </div>
@@ -91,7 +91,7 @@
               <th class="text-center"><span class="d-md-none">CANT.</span><span class="d-none d-md-inline">CANTIDAD</span></th>
               <th>MOTIVO</th>
               <th>PLACA</th>
-              <th *ngIf="mostrarTraslados">TRASLADO</th>
+              <!-- <th *ngIf="mostrarTraslados">TRASLADO</th> -->
               <th>ACCIONES</th>
             </tr>
           </ng-template>
@@ -123,7 +123,7 @@
                        [pTooltip]="detalleUnidades(s)" tooltipPosition="top" tooltipStyleClass="tooltip-multilinea"></p-tag>
                 <ng-container *ngIf="s.placa !== 'MULTIPLE'">{{ s.placa }}</ng-container>
               </td>
-              <td *ngIf="mostrarTraslados">
+              <!-- <td *ngIf="mostrarTraslados">
                 <p-tag *ngIf="s.idTraslado" [value]="'T-' + s.idTraslado" severity="info" class="tag-link"
                        (click)="verTraslado(s)"
                        [pTooltip]="esTrasladoActivo(s.idTraslado) ? 'Ver en Traslados activos' : 'Ver resumen del traslado'"
@@ -135,7 +135,7 @@
                          [pTooltip]="u.placa + ' · ' + u.cantidad + ' pers. · ' + u.estado + (u.idTraslado ? ' — click para ver el traslado' : '')"
                          tooltipPosition="top"></p-tag>
                 </ng-container>
-              </td>
+              </td> -->
               <td>
                 <div class="d-flex gap-1 align-items-center mb-1" *ngIf="indicadores(s).length">
                   <span *ngFor="let ind of indicadores(s)" class="ind-estado" [ngClass]="ind.clase"
@@ -186,6 +186,7 @@
     </div>
   </div>
 
+  <!-- PANEL DE TRASLADOS OCULTO PARA REVISIÓN — quitar los marcadores de comentario para restaurar
   <div class="col-lg-4" *ngIf="mostrarTraslados">
     <div class="card">
       <div class="card-body">
@@ -208,7 +209,9 @@
             <i class="pi pi-chevron-right"></i>
           </button>
         </div>
+-->
         <!-- Traslados finalizados del día: mismas tarjetas pero solo consulta -->
+        <!--
         <button class="btn btn-sm btn-link px-0 mt-2" *ngIf="trasladosFinalizados.length"
                 (click)="mostrarFinalizados = !mostrarFinalizados">
           <i class="pi me-1" [class.pi-chevron-down]="mostrarFinalizados" [class.pi-chevron-right]="!mostrarFinalizados"></i>
@@ -233,6 +236,7 @@
       </div>
     </div>
   </div>
+-->
 </div>
 
 <!-- Contenido compartido de la tarjeta de traslado (activos y finalizados) -->
@@ -417,9 +421,9 @@
     <div class="row g-2 mb-2 align-items-center" *ngFor="let a of asignaciones; let i = index">
       <div class="col-md-5"><p-select [options]="unidadesOpcionesPara(a)" optionLabel="etiqueta" optionValue="placa" optionDisabled="sinCupo" [(ngModel)]="a.placa" (ngModelChange)="alCambiarUnidad(a)" placeholder="Unidad" appendTo="body" styleClass="w-100"></p-select></div>
       <div class="col-md-3">
-        <input type="number" min="1" [max]="cupoDePlaca(a.placa)" class="form-control"
-               [class.is-invalid]="a.cantidad < 1 || excedeCupo(a)" [(ngModel)]="a.cantidad" />
-        <div class="invalid-feedback" *ngIf="excedeCupo(a)">Máx {{ cupoDePlaca(a.placa) }}</div>
+        <input type="number" min="1" class="form-control"
+               [class.is-invalid]="a.cantidad < 1" [(ngModel)]="a.cantidad" />
+        <div class="small text-warning" *ngIf="excedeCupo(a)">Excede el cupo ({{ cupoDePlaca(a.placa) }} libres)</div>
       </div>
       <div class="col-md-1">
         <button class="btn btn-outline-danger btn-sm" (click)="quitarUnidad(i)" [disabled]="asignaciones.length < 2" pTooltip="Quitar unidad" tooltipPosition="top"><i class="pi pi-trash"></i></button>

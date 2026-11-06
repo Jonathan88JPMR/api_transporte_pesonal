@@ -211,14 +211,15 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     } catch { this.puntos = []; }
   }
 
-  // RF-012: opciones del select con cupo visible; sin cupo quedan deshabilitadas.
-  // El cupo se calcula por fecha; si la solicitud no es de hoy, se indica la fecha.
+  // RF-012: opciones del select con cupo visible. El cupo es informativo:
+  // el coordinador puede sobreasignar (se pide confirmación al guardar).
+  // Si la solicitud no es de hoy, se indica la fecha en la etiqueta.
   unidadesOpcionesFecha(fecha?: string) {
     const sufijo = fecha && fecha.slice(0, 10) !== this.fechaLocal()
       ? ` (${fecha.slice(8, 10)}/${fecha.slice(5, 7)})` : '';
     return this.unidades.map(u => {
       const libre = this.cupoLibre(u.placa, fecha);
-      return { ...u, etiqueta: `${u.placa} · ${libre}/${u.capacidad} libres${sufijo}`, sinCupo: libre <= 0 };
+      return { ...u, etiqueta: `${u.placa} · ${libre}/${u.capacidad} libres${sufijo}` };
     });
   }
 
@@ -348,6 +349,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     switch (estado) {
       case 'REALIZADO': return 'success';
       case 'EN_RUTA': return 'info';
+      case 'A_BORDO': return 'warn';
       case 'ASIGNADO': return 'secondary';
       case 'ANULADO': return 'danger';
       default: return 'warn';
@@ -372,7 +374,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     const porPlaca = await this.transporteService.serviciosPorPlacas(this.unidades.map(u => u.placa));
     for (const { placa, servicios } of porPlaca) {
       for (const s of servicios) {
-        if (s.estado === 'ASIGNADO' || s.estado === 'EN_RUTA') {
+        if (s.estado === 'ASIGNADO' || s.estado === 'EN_RUTA' || s.estado === 'A_BORDO') {
           const f = (s.fechaProgramada ?? '').slice(0, 10);
           const porFecha = (ocup[placa] ??= {});
           porFecha[f] = (porFecha[f] ?? 0) + (s.cantidad ?? 0);
@@ -422,7 +424,7 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     'recibido' | 'enruta' | 'abordo' | 'entregado' | null {
     const prog = claves.map(c => c != null ? this.progresoServicios[c] : undefined).find(x => x != null);
     if (estado === 'REALIZADO' || prog === 'ENTREGADO') return 'entregado';
-    if (estado === 'EN_RUTA') return prog === 'A_BORDO' ? 'abordo' : 'enruta';
+    if (estado === 'EN_RUTA' || estado === 'A_BORDO') return (prog === 'A_BORDO' || estado === 'A_BORDO') ? 'abordo' : 'enruta';
     if (estado === 'ASIGNADO') return 'recibido';
     return null;
   }
@@ -463,9 +465,11 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
       this.alertService.showAlert('warning', 'Seleccione una placa primero', 'Atención');
       return;
     }
-    if (s.cantidad > this.cupoLibre(placa, s.fechaProgramada)) {
-      this.alertService.showAlert('warning', 'La unidad no tiene capacidad suficiente', 'Atención');
-      return;
+    const libre = this.cupoLibre(placa, s.fechaProgramada);
+    if (s.cantidad > libre) {
+      const ok = await this.alertService.confirm('Unidad sin cupo',
+        `${placa} tiene ${Math.max(libre, 0)} libres y la solicitud es de ${s.cantidad} persona(s). ¿Asignar de todos modos?`);
+      if (!ok) return;
     }
     try {
       await this.transporteService.asignarUnidad(s.idSolicitud, placa);
@@ -477,10 +481,13 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
 
   // RF-013: asignación automática — primera unidad libre con cupo suficiente
   async asignarAutomatico(s: Solicitud) {
-    const candidata = this.unidades.find(u => this.cupoLibre(u.placa, s.fechaProgramada) >= s.cantidad);
+    let candidata = this.unidades.find(u => this.cupoLibre(u.placa, s.fechaProgramada) >= s.cantidad);
     if (!candidata) {
-      this.alertService.showAlert('warning', 'Ninguna unidad tiene cupo suficiente; use la asignación múltiple', 'Sin cupo');
-      return;
+      const primera = this.unidades[0];
+      const ok = primera && await this.alertService.confirm('Unidad sin cupo',
+        `Ninguna unidad tiene cupo suficiente. ¿Asignar a ${primera.placa} de todos modos?`);
+      if (!ok) return;
+      candidata = primera;
     }
     try {
       await this.transporteService.asignarUnidad(s.idSolicitud, candidata.placa);
@@ -581,9 +588,9 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.excedeCupoUnir()) {
-      this.alertService.showAlert('warning',
-        `Las solicitudes suman ${this.totalSeleccionadas()} personas y ${this.placaUnir} tiene ${this.cupoLibre(this.placaUnir, this.fechasUnir()[0])} libres`, 'Sin cupo');
-      return;
+      const ok = await this.alertService.confirm('Unidad sin cupo',
+        `Las solicitudes suman ${this.totalSeleccionadas()} personas y ${this.placaUnir} tiene ${Math.max(this.cupoLibre(this.placaUnir, this.fechasUnir()[0]), 0)} libres. ¿Unir de todos modos?`);
+      if (!ok) return;
     }
     const ids = this.seleccionadas.map(s => s.idSolicitud);
     try {
@@ -929,25 +936,30 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
   unidadesOpcionesPara(actual: AsignacionUnidad) {
     const usadas = new Set(this.asignaciones.filter(x => x !== actual && x.placa).map(x => x.placa));
     return this.unidadesOpcionesFecha(this.solicitudMultiple?.fechaProgramada)
-      .map(o => ({ ...o, sinCupo: o.sinCupo || usadas.has(o.placa) }));
+      .map(o => ({ ...o, sinCupo: usadas.has(o.placa) }));
   }
 
   alCambiarUnidad(a: AsignacionUnidad) {
-    a.cantidad = Math.max(1, Math.min(a.cantidad ?? 1, this.cupoDePlaca(a.placa)));
+    a.cantidad = Math.max(1, a.cantidad ?? 1);
   }
 
   get distribucionValida(): boolean {
     if (!this.solicitudMultiple) return false;
     return this.asignaciones.length > 0
-      && this.asignaciones.every(a => !!a.placa && a.cantidad >= 1 && !this.excedeCupo(a))
+      && this.asignaciones.every(a => !!a.placa && a.cantidad >= 1)
       && this.totalAsignado() === this.solicitudMultiple.cantidad;
   }
 
   async guardarAsignacionMultiple() {
     if (!this.solicitudMultiple) return;
     if (!this.distribucionValida) {
-      this.alertService.showAlert('warning', 'La suma debe ser igual al total y no exceder el cupo de cada unidad', 'Atención');
+      this.alertService.showAlert('warning', 'La suma debe ser igual a la cantidad solicitada y cada unidad debe tener placa', 'Atención');
       return;
+    }
+    if (this.asignaciones.some(a => this.excedeCupo(a))) {
+      const ok = await this.alertService.confirm('Unidad sin cupo',
+        'Alguna unidad queda por encima de su capacidad. ¿Guardar la distribución de todos modos?');
+      if (!ok) return;
     }
     try {
       await this.transporteService.asignarMultiplesUnidades(this.solicitudMultiple.idSolicitud, this.asignaciones);

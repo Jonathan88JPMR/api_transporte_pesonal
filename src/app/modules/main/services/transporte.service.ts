@@ -34,7 +34,7 @@ export class TransporteService {
     return this.mutar<Solicitud[]>('solicitudes/realizado', { idSolicitud, realizado }).then(r => this.unwrap(r));
   }
 
-  cambiarEstado(idSolicitud: number, estado: 'PENDIENTE' | 'ASIGNADO' | 'EN_RUTA' | 'REALIZADO', idSolicitudUnidad?: number | null, usuario?: string): Promise<Solicitud[]> {
+  cambiarEstado(idSolicitud: number, estado: 'PENDIENTE' | 'ASIGNADO' | 'EN_RUTA' | 'A_BORDO' | 'REALIZADO', idSolicitudUnidad?: number | null, usuario?: string): Promise<Solicitud[]> {
     return this.mutar<Solicitud[]>('solicitudes/estado', { idSolicitud, estado, idSolicitudUnidad, usuario }).then(r => this.unwrap(r));
   }
 

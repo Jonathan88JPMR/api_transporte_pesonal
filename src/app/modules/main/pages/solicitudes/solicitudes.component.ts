@@ -158,7 +158,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     const hoy = this.fechaHoy();
     for (const { placa, servicios } of await this.transporteService.serviciosPorPlacas(this.unidades.map(u => u.placa))) {
       for (const s of servicios) {
-        if ((s.estado === 'ASIGNADO' || s.estado === 'EN_RUTA') && (s.fechaProgramada ?? '').slice(0, 10) === hoy) {
+        if ((s.estado === 'ASIGNADO' || s.estado === 'EN_RUTA' || s.estado === 'A_BORDO') && (s.fechaProgramada ?? '').slice(0, 10) === hoy) {
           ocup[placa] = (ocup[placa] ?? 0) + (s.cantidad ?? 0);
         }
         if (s.idSolicitudUnidad != null) {
@@ -487,6 +487,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     switch (estado) {
       case 'REALIZADO': return 'success';
       case 'EN_RUTA': return 'info';
+      case 'A_BORDO': return 'warn';
       case 'ASIGNADO': return 'secondary';
       case 'ANULADO': return 'danger';
       default: return 'warn';

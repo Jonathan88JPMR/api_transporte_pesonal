@@ -70,6 +70,7 @@
       </td>
       <td>
         <div class="d-flex gap-1 align-items-center justify-content-center">
+          <!-- FLUJO ANTERIOR (comentado para revisión del nuevo flujo)
           <button *ngIf="s.estado === 'ASIGNADO'" class="btn btn-sm btn-primary" (click)="cambiarEstado(s, 'EN_RUTA')"
                   pTooltip="Iniciar servicio" tooltipPosition="top">
             <i class="pi pi-play"></i><span class="accion-label">Iniciar</span>
@@ -83,7 +84,26 @@
             <i class="pi pi-check"></i><span class="accion-label">Finalizar</span>
             <span *ngIf="paradasPendientes(s).length" class="badge bg-warning text-dark ms-1">{{ paradasPendientes(s).length }}</span>
           </button>
-          <button *ngIf="s.estado === 'ASIGNADO' || s.estado === 'EN_RUTA'" class="btn btn-sm btn-outline-danger" (click)="abrirPasajeros(s)" pTooltip="Agregar pasajeros de emergencia" tooltipPosition="top"><i class="pi pi-user-plus"></i><span class="accion-label">Pasajeros</span></button>
+          -->
+          <!-- NUEVO FLUJO: Iniciar recojo → Recojo → Dejar personal -->
+          <button *ngIf="s.estado === 'ASIGNADO'" class="btn btn-sm btn-primary" (click)="cambiarEstado(s, 'EN_RUTA')"
+                  pTooltip="Iniciar recojo del personal" tooltipPosition="top">
+            <i class="pi pi-play"></i><span class="accion-label">Iniciar recojo</span>
+          </button>
+          <button *ngIf="s.estado === 'EN_RUTA'" class="btn btn-sm btn-warning" (click)="cambiarEstado(s, 'A_BORDO')"
+                  pTooltip="Confirmar que recogió al personal (está a bordo)" tooltipPosition="top">
+            <i class="pi pi-users"></i><span class="accion-label">Recojo</span>
+          </button>
+          <button *ngIf="s.estado === 'A_BORDO'" class="btn btn-sm"
+                  [class.btn-success]="paradasPendientes(s).length === 0"
+                  [class.btn-outline-warning]="paradasPendientes(s).length > 0"
+                  (click)="cambiarEstado(s, 'REALIZADO')"
+                  [pTooltip]="paradasPendientes(s).length ? 'Primero procese las paradas pendientes (botón Paradas)' : 'Dejó al personal en destino'"
+                  tooltipPosition="top">
+            <i class="pi pi-check"></i><span class="accion-label">Dejar personal</span>
+            <span *ngIf="paradasPendientes(s).length" class="badge bg-warning text-dark ms-1">{{ paradasPendientes(s).length }}</span>
+          </button>
+          <button *ngIf="s.estado === 'ASIGNADO' || enCurso(s)" class="btn btn-sm btn-outline-danger" (click)="abrirPasajeros(s)" pTooltip="Agregar pasajeros de emergencia" tooltipPosition="top"><i class="pi pi-user-plus"></i><span class="accion-label">Pasajeros</span></button>
           <button *ngIf="mapaUrl(s) || s.paradas?.length" class="btn btn-sm btn-outline-info" (click)="verMapa(s)" pTooltip="Ver checklist de paradas" tooltipPosition="top"><i class="pi pi-flag"></i><span class="accion-label">Paradas</span></button>
         </div>
       </td>
@@ -163,7 +183,7 @@
             <span *ngIf="p.horaLlegada">{{ p.horaLlegada | date:'HH:mm' }}</span><span *ngIf="p.horaSalida"> → {{ p.horaSalida | date:'HH:mm' }}</span>
           </td>
           <td>
-            <div class="d-flex gap-1" *ngIf="servicioMapa.estado === 'EN_RUTA' && esParadaActual(servicioMapa, p)">
+            <div class="d-flex gap-1" *ngIf="enCurso(servicioMapa) && esParadaActual(servicioMapa, p)">
               <button *ngIf="(p.estado ?? 'PENDIENTE') === 'PENDIENTE'" class="btn btn-sm btn-primary"
                       (click)="llegarParada(servicioMapa, p)" [disabled]="marcando"
                       pTooltip="Marcar llegada a la parada" tooltipPosition="top">
@@ -210,7 +230,7 @@
     </div>
 
     <!-- Parada imprevista: el conductor inserta una parada no programada en ruta -->
-    <div class="mb-3" *ngIf="servicioMapa.paradas?.length && servicioMapa.estado === 'EN_RUTA'">
+    <div class="mb-3" *ngIf="servicioMapa.paradas?.length && enCurso(servicioMapa)">
       <button class="btn btn-sm btn-outline-secondary" *ngIf="!agregandoParada" (click)="abrirParadaImprevista()">
         <i class="pi pi-plus me-1"></i> Parada imprevista
       </button>

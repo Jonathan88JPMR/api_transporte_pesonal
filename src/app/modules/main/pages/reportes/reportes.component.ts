@@ -29,7 +29,7 @@ export class ReportesComponent implements OnInit {
   filtroSupervisor = '';
   filtroPlaca = '';
   filtroEstado = '';
-  estados = ['PENDIENTE', 'ASIGNADO', 'EN_RUTA', 'REALIZADO', 'ANULADO'];
+  estados = ['PENDIENTE', 'ASIGNADO', 'EN_RUTA', 'A_BORDO', 'REALIZADO', 'ANULADO'];
 
   constructor(
     private transporteService: TransporteService,
