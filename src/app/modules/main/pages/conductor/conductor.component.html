@@ -40,7 +40,7 @@
   </ng-template>
   <ng-template #body let-s>
     <tr [class.table-success]="s.realizado" [class.table-danger]="s.prioridad === 'EMERGENCIA' || s.esEmergencia">
-      <td><span class="d-none d-md-inline">{{ s.fechaProgramada | date:'dd/MM' }} </span>{{ s.horaRequerida || s.horaProgramada }}</td>
+      <td class="col-negrita"><span class="d-none d-md-inline">{{ s.fechaProgramada | date:'dd/MM' }} </span>{{ s.horaRequerida || s.horaProgramada }}</td>
       <td>
         {{ s.nombre }}
         <div class="small text-muted" *ngIf="s.area">{{ s.area }}</div>
