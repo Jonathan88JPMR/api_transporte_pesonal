@@ -112,7 +112,9 @@
 <p-dialog [(visible)]="mostrarDialogo" [modal]="true" [style]="{ width: '480px' }"
           [header]="editando ? 'Editar solicitud' : 'Solicitud Form'" [draggable]="false">
   <form [formGroup]="form" class="d-flex flex-column gap-3">
-    <div>
+    <!-- Campos automáticos ocultos: el nombre sale del usuario logueado y
+         fecha/hora de solicitud las genera el sistema -->
+    <!-- <div>
       <label class="form-label">NOMBRE *</label>
       <input class="form-control" [value]="usuario?.nombre ?? usuario?.usuario" disabled />
     </div>
@@ -123,7 +125,7 @@
     <div>
       <label class="form-label">HR. SOLICITUD <span class="text-muted fw-normal">(automática)</span></label>
       <input type="time" class="form-control" formControlName="horaProgramada" readonly tabindex="-1" />
-    </div>
+    </div> -->
     <div>
       <label class="form-label">HR. REQUERIDA *</label>
       <input type="time" class="form-control" formControlName="horaRequerida" />
@@ -150,11 +152,12 @@
       <p-select [options]="motivos" optionLabel="nombre" optionValue="nombre"
                 formControlName="motivo" placeholder="Seleccione" styleClass="w-100"></p-select>
     </div>
-    <div>
+    <!-- Observación y prioridad: visibles para coordinador y admin, no para supervisor -->
+    <div *ngIf="!esSupervisor">
       <label class="form-label">OBSERVACIÓN</label>
       <textarea class="form-control" rows="2" formControlName="observacion"></textarea>
     </div>
-    <div>
+    <div *ngIf="!esSupervisor">
       <label class="form-label">PRIORIDAD</label>
       <select class="form-select" formControlName="prioridad">
         <option value="NORMAL">Normal</option>

@@ -236,11 +236,11 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
 
   // Tabs de estado: la vista operativa muestra las activas (PENDIENTE/ASIGNADO/
   // EN_RUTA); realizadas y anuladas van en tabs aparte para no confundir
-  tabEstado: 'ACTIVAS' | 'REALIZADO' | 'ANULADO' = 'ACTIVAS';
+  tabEstado: 'ACTIVAS' | 'REALIZADO' | 'ANULADO' | 'TODAS' = 'TODAS';
   solicitudesAnuladas: Solicitud[] = [];
   private anuladasCargadas = false;
 
-  seleccionarTab(t: 'ACTIVAS' | 'REALIZADO' | 'ANULADO') {
+  seleccionarTab(t: 'ACTIVAS' | 'REALIZADO' | 'ANULADO' | 'TODAS') {
     this.tabEstado = t;
     if (t === 'ANULADO' && !this.anuladasCargadas) void this.cargarAnuladas();
   }
@@ -262,14 +262,16 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     const porFecha = this.baseFecha(fuente);
     switch (this.tabEstado) {
       case 'REALIZADO': return porFecha.filter(s => s.estado === 'REALIZADO');
+      case 'TODAS': return porFecha;
       case 'ANULADO': return porFecha;
       default: return porFecha.filter(s => s.estado !== 'REALIZADO');
     }
   }
 
-  conteoTab(t: 'ACTIVAS' | 'REALIZADO' | 'ANULADO'): number {
+  conteoTab(t: 'ACTIVAS' | 'REALIZADO' | 'ANULADO' | 'TODAS'): number {
     if (t === 'ANULADO') return this.baseFecha(this.solicitudesAnuladas).length;
     const activas = this.baseFecha(this.solicitudes);
+    if (t === 'TODAS') return activas.length;
     return t === 'REALIZADO'
       ? activas.filter(s => s.estado === 'REALIZADO').length
       : activas.filter(s => s.estado !== 'REALIZADO').length;

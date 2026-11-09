@@ -103,8 +103,8 @@
             <i class="pi pi-check"></i><span class="accion-label">Dejar personal</span>
             <span *ngIf="paradasPendientes(s).length" class="badge bg-warning text-dark ms-1">{{ paradasPendientes(s).length }}</span>
           </button>
-          <button *ngIf="s.estado === 'ASIGNADO' || enCurso(s)" class="btn btn-sm btn-outline-danger" (click)="abrirPasajeros(s)" pTooltip="Agregar pasajeros de emergencia" tooltipPosition="top"><i class="pi pi-user-plus"></i><span class="accion-label">Pasajeros</span></button>
-          <button *ngIf="mapaUrl(s) || s.paradas?.length" class="btn btn-sm btn-outline-info" (click)="verMapa(s)" pTooltip="Ver checklist de paradas" tooltipPosition="top"><i class="pi pi-flag"></i><span class="accion-label">Paradas</span></button>
+          <!-- <button *ngIf="s.estado === 'ASIGNADO' || enCurso(s)" class="btn btn-sm btn-outline-danger" (click)="abrirPasajeros(s)" pTooltip="Agregar pasajeros de emergencia" tooltipPosition="top"><i class="pi pi-user-plus"></i><span class="accion-label">Pasajeros</span></button>
+          <button *ngIf="mapaUrl(s) || s.paradas?.length" class="btn btn-sm btn-outline-info" (click)="verMapa(s)" pTooltip="Ver checklist de paradas" tooltipPosition="top"><i class="pi pi-flag"></i><span class="accion-label">Paradas</span></button> -->
         </div>
       </td>
     </tr>

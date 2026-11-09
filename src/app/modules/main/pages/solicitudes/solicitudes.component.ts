@@ -294,6 +294,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
   }
 
   verDetalle(s: Solicitud) {
+    if (this.esSupervisor) return; // supervisor: clic en fila sin modal de detalle
     this.detalle = s;
     this.mostrarDetalle = true;
     void this.cargarTraslados(); // refrescar el estado de las paradas al abrir
