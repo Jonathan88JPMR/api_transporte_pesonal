@@ -146,7 +146,7 @@
                   <span *ngFor="let ind of indicadores(s)" class="ind-estado" [ngClass]="ind.clase"
                         [pTooltip]="ind.texto" tooltipPosition="top"></span>
                 </div>
-                <div class="d-flex gap-1 align-items-center" *ngIf="tabEstado === 'ACTIVAS' && !s.idTraslado && s.estado === 'PENDIENTE'">
+                <div class="d-flex gap-1 align-items-center" *ngIf="(tabEstado === 'ACTIVAS' || tabEstado === 'TODAS') && !s.idTraslado && s.estado === 'PENDIENTE'">
                   <p-select [options]="unidadesOpcionesFecha(s.fechaProgramada)" optionLabel="etiqueta" optionValue="placa" optionDisabled="sinCupo"
                             [(ngModel)]="placasAsignar[s.idSolicitud]" placeholder="Placa"
                             appendTo="body" styleClass="p-select-sm" [style]="{ width: '170px' }"></p-select>
