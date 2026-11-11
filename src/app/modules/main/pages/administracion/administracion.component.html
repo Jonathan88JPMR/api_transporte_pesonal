@@ -14,7 +14,10 @@
           <div class="col-md-1"><input class="form-control" [(ngModel)]="form.dni" placeholder="DNI" maxlength="15" autocomplete="off" /></div>
           <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idrol"><option *ngFor="let r of rolesForm" [value]="r.valor">{{ r.etiqueta }}</option></select></div>
           <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idArea"><option [ngValue]="null">Sin área</option><option *ngFor="let a of areas" [ngValue]="a.idArea">{{ a.nombre }}</option></select></div>
-          <div class="col-md-2"><input type="password" class="form-control" [(ngModel)]="form.clave" placeholder="Clave" autocomplete="new-password" /></div>
+          <div class="col-md-2"><div class="input-group">
+            <input [type]="verClave ? 'text' : 'password'" class="form-control" [(ngModel)]="form.clave" [placeholder]="form.id ? 'Nueva clave (opcional)' : 'Clave'" autocomplete="new-password" />
+            <button class="btn btn-outline-secondary" type="button" (click)="verClave = !verClave" [pTooltip]="verClave ? 'Ocultar clave' : 'Ver clave'" tooltipPosition="top"><i class="pi" [class.pi-eye]="!verClave" [class.pi-eye-slash]="verClave"></i></button>
+          </div></div>
         </ng-container>
         <ng-container *ngIf="entidad === 'CONDUCTOR'">
           <div class="col-md-2"><input class="form-control" [(ngModel)]="form.usuario" placeholder="Usuario" [disabled]="!!form.id" autocomplete="off" /></div>
@@ -22,7 +25,10 @@
           <div class="col-md-1"><input class="form-control" [(ngModel)]="form.dni" placeholder="DNI" maxlength="15" autocomplete="off" /></div>
           <div class="col-md-2"><input class="form-control" [(ngModel)]="form.placa" placeholder="Placa conductor" autocomplete="off" /></div>
           <div class="col-md-2"><select class="form-select" [(ngModel)]="form.idArea"><option [ngValue]="null">Sin área</option><option *ngFor="let a of areas" [ngValue]="a.idArea">{{ a.nombre }}</option></select></div>
-          <div class="col-md-2"><input type="password" class="form-control" [(ngModel)]="form.clave" placeholder="Clave" autocomplete="new-password" /></div>
+          <div class="col-md-2"><div class="input-group">
+            <input [type]="verClave ? 'text' : 'password'" class="form-control" [(ngModel)]="form.clave" [placeholder]="form.id ? 'Nueva clave (opcional)' : 'Clave'" autocomplete="new-password" />
+            <button class="btn btn-outline-secondary" type="button" (click)="verClave = !verClave" [pTooltip]="verClave ? 'Ocultar clave' : 'Ver clave'" tooltipPosition="top"><i class="pi" [class.pi-eye]="!verClave" [class.pi-eye-slash]="verClave"></i></button>
+          </div></div>
         </ng-container>
         <!-- Unidad de la flota: propia (sin transportista, con conductor y estado
              operativo) o de tercero (exige transportista para la OS) -->
@@ -120,7 +126,7 @@
       <ng-template #body let-r>
         <tr [style.text-decoration]="r.eliminado ? 'line-through' : null" [style.opacity]="r.eliminado ? '0.6' : null">
           <td data-label="ID">{{ idRegistro(r) }}</td>
-          <td *ngFor="let c of columnas()" [attr.data-label]="c.etiqueta">{{ c.campo === 'idrol' ? (roles[r.idrol] || r.idrol) : c.campo === 'porPasajero' ? (r.porPasajero ? 'Por pasajero' : 'Por viaje') : c.campo === 'vigente' ? (r.vigente ? 'AHORA' : '—') : c.campo === 'horario' ? (r.horaInicio + ' - ' + r.horaFin) : c.campo === 'estadoOperativo' ? (estadoOp[r.estadoOperativo] || r.estadoOperativo) : r[c.campo] }}</td>
+          <td *ngFor="let c of columnas()" [attr.data-label]="c.etiqueta"><ng-container *ngIf="c.campo === 'claveVisible'; else celdaGenerica"><ng-container *ngIf="r.claveVisible; else sinClave"><span class="me-1">{{ clavesVisibles.has(idRegistro(r)) ? r.claveVisible : '••••••' }}</span><button type="button" class="btn btn-sm btn-link p-0 align-baseline" (click)="alternarVerClave(idRegistro(r))" [pTooltip]="clavesVisibles.has(idRegistro(r)) ? 'Ocultar clave' : 'Ver clave'" tooltipPosition="top"><i class="pi" [class.pi-eye]="!clavesVisibles.has(idRegistro(r))" [class.pi-eye-slash]="clavesVisibles.has(idRegistro(r))"></i></button></ng-container><ng-template #sinClave><span class="text-muted">—</span></ng-template></ng-container><ng-template #celdaGenerica>{{ c.campo === 'idrol' ? (roles[r.idrol] || r.idrol) : c.campo === 'porPasajero' ? (r.porPasajero ? 'Por pasajero' : 'Por viaje') : c.campo === 'vigente' ? (r.vigente ? 'AHORA' : '—') : c.campo === 'horario' ? (r.horaInicio + ' - ' + r.horaFin) : c.campo === 'estadoOperativo' ? (estadoOp[r.estadoOperativo] || r.estadoOperativo) : r[c.campo] }}</ng-template></td>
           <td data-label="Estado"><p-tag [value]="estadoRegistro(r).texto" [severity]="estadoRegistro(r).severidad"></p-tag></td>
           <td data-label="Acciones"><div class="d-flex gap-1 align-items-center justify-content-center">
             <button *ngIf="!r.eliminado && puedeGestionar(r)" class="btn btn-sm btn-outline-primary" (click)="editar(r)" pTooltip="Editar" tooltipPosition="top"><i class="pi pi-pencil"></i><span class="accion-label">Editar</span></button>

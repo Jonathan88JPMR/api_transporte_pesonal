@@ -149,8 +149,15 @@
     </div>
     <div>
       <label class="form-label">MOTIVO *</label>
-      <p-select [options]="motivos" optionLabel="nombre" optionValue="nombre"
-                formControlName="motivo" placeholder="Seleccione" styleClass="w-100"></p-select>
+      <!-- Supervisor en móvil: texto libre con sugerencias del catálogo -->
+      <p-autocomplete *ngIf="esMovil && esSupervisor; else selMotivo"
+                      [suggestions]="motivosFiltrados" (completeMethod)="filtrarMotivos($event)"
+                      formControlName="motivo" placeholder="Escriba el motivo"
+                      [forceSelection]="false" [dropdown]="true" styleClass="w-100"></p-autocomplete>
+      <ng-template #selMotivo>
+        <p-select [options]="motivos" optionLabel="nombre" optionValue="nombre"
+                  formControlName="motivo" placeholder="Seleccione" styleClass="w-100"></p-select>
+      </ng-template>
     </div>
     <!-- Observación y prioridad: visibles para coordinador y admin, no para supervisor -->
     <div *ngIf="!esSupervisor">

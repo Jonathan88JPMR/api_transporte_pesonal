@@ -32,7 +32,7 @@
       <th>P. LLEGADA</th>
       <th class="text-center"><span class="d-md-none">CANT.</span><span class="d-none d-md-inline">CANTIDAD</span></th>
       <th class="d-none d-md-table-cell">CUPO</th>
-      <th>MOTIVO</th>
+      <th class="d-none d-md-table-cell">MOTIVO</th>
       <th class="d-none d-md-table-cell">PRIORIDAD</th>
       <th class="d-none d-md-table-cell">ESTADO</th>
       <th>ACCIONES</th>
@@ -44,6 +44,8 @@
       <td>
         {{ s.nombre }}
         <div class="small text-muted" *ngIf="s.area">{{ s.area }}</div>
+        <div class="small text-danger fw-bold d-md-none" *ngIf="s.esEmergencia">EMERGENCIA MÉDICA</div>
+        <div class="small text-danger fw-bold d-md-none" *ngIf="!s.esEmergencia && s.prioridad === 'EMERGENCIA'">EMERGENCIA</div>
       </td>
       <td class="col-negrita">{{ s.puntoPartida }}</td>
       <td class="col-negrita">{{ s.puntoLlegada }}</td>
@@ -53,11 +55,7 @@
       <td class="d-none d-md-table-cell">
         <p-tag *ngIf="cupoServicio(s) as c" [value]="c.ocupada + '/' + c.capacidad" [severity]="severidadCupo(s)"></p-tag>
       </td>
-      <td>
-        <span *ngIf="s.esEmergencia" class="d-md-none text-danger fw-bold">EMERGENCIA MÉDICA - </span>
-        <span *ngIf="!s.esEmergencia && s.prioridad === 'EMERGENCIA'" class="d-md-none text-danger fw-bold">EMERGENCIA - </span>
-        {{ s.motivo }}
-      </td>
+      <td class="d-none d-md-table-cell">{{ s.motivo }}</td>
       <td class="d-none d-md-table-cell">
         <p-tag [value]="s.prioridad ?? (s.esEmergencia ? 'EMERGENCIA' : 'NORMAL')" [severity]="s.prioridad === 'EMERGENCIA' || s.esEmergencia ? 'danger' : s.prioridad === 'ALTA' ? 'warn' : 'secondary'"></p-tag>
         <p-tag *ngIf="s.esEmergencia" value="MÉDICA" severity="danger" icon="pi pi-heart" class="ms-1"></p-tag>

@@ -33,6 +33,8 @@ export class AdministracionComponent implements OnInit {
   unidades: { placa: string }[] = [];
   tiposVehiculo: { idTipoVehiculo: number; nombre: string }[] = [];
   form: any = {};
+  verClave = false;
+  clavesVisibles = new Set<number>();
   verEliminados = false;
   rolActual = '';
   roles: Record<string, string> = { SPTRANS: 'Supervisor', COTRANS: 'Coordinador', CHTRANS: 'Conductor', ADTRANS: 'Administrador' };
@@ -83,6 +85,7 @@ export class AdministracionComponent implements OnInit {
     this.registros = this.verEliminados ? this.registrosTodos : this.registrosTodos.filter(r => !r.eliminado);
   }
   limpiar() {
+    this.verClave = false;
     this.form = this.entidad === 'UNIDAD' ? { capacidad: 15, tipoPropiedad: 'PROPIA', estadoOperativo: 'OPERATIVA' }
       : this.entidad === 'COMUNICADO' ? { fecha: new Date().toISOString().slice(0, 10) }
       : this.entidad === 'USUARIO' ? { idrol: 'SPTRANS' }
@@ -90,8 +93,8 @@ export class AdministracionComponent implements OnInit {
   }
   columnas(): { etiqueta: string; campo: string }[] {
     switch (this.entidad) {
-      case 'USUARIO': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Usuario', campo: 'usuario' }, { etiqueta: 'DNI', campo: 'dni' }, { etiqueta: 'Rol', campo: 'idrol' }, { etiqueta: 'Área', campo: 'area' }];
-      case 'CONDUCTOR': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Usuario', campo: 'usuario' }, { etiqueta: 'DNI', campo: 'dni' }, { etiqueta: 'Placa', campo: 'placa' }, { etiqueta: 'Área', campo: 'area' }];
+      case 'USUARIO': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Usuario', campo: 'usuario' }, { etiqueta: 'DNI', campo: 'dni' }, { etiqueta: 'Rol', campo: 'idrol' }, { etiqueta: 'Área', campo: 'area' }, { etiqueta: 'Clave', campo: 'claveVisible' }];
+      case 'CONDUCTOR': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Usuario', campo: 'usuario' }, { etiqueta: 'DNI', campo: 'dni' }, { etiqueta: 'Placa', campo: 'placa' }, { etiqueta: 'Área', campo: 'area' }, { etiqueta: 'Clave', campo: 'claveVisible' }];
       case 'UNIDAD': return [{ etiqueta: 'Placa', campo: 'placa' }, { etiqueta: 'Propiedad', campo: 'tipoPropiedad' }, { etiqueta: 'Vehículo', campo: 'tipoVehiculo' }, { etiqueta: 'Capacidad', campo: 'capacidad' }, { etiqueta: 'Conductor', campo: 'conductor' }, { etiqueta: 'Estado', campo: 'estadoOperativo' }/*, { etiqueta: 'Transportista', campo: 'transportista' }*/];
       case 'COMUNICADO': return [{ etiqueta: 'Título', campo: 'titulo' }, { etiqueta: 'Fecha', campo: 'fecha' }, { etiqueta: 'Horario', campo: 'horario' }, { etiqueta: 'Unidades', campo: 'unidades' }, { etiqueta: 'Actividad', campo: 'motivoActividad' }, { etiqueta: 'Vigente', campo: 'vigente' }];
       case 'PUNTO': return [{ etiqueta: 'Nombre', campo: 'nombre' }, { etiqueta: 'Latitud', campo: 'latitud' }, { etiqueta: 'Longitud', campo: 'longitud' }];
@@ -107,7 +110,8 @@ export class AdministracionComponent implements OnInit {
     }
   }
   idRegistro(r: any) { return r.idUsuario ?? r.idUnidad ?? r.idPunto ?? r.idMotivo ?? r.idArea ?? r.idTransportista ?? r.idTarifa ?? r.idCeco ?? r.idComunicado ?? r.idTipoVehiculo; }
-  editar(r: any) { this.form = { ...r, id: this.idRegistro(r), clave: '' }; }
+  editar(r: any) { this.form = { ...r, id: this.idRegistro(r), clave: r.claveVisible ?? '' }; }
+  alternarVerClave(id: number) { this.clavesVisibles.has(id) ? this.clavesVisibles.delete(id) : this.clavesVisibles.add(id); }
   async guardar() {
     const datos = { ...this.form };
     if (this.entidad === 'CONDUCTOR') datos.idrol = 'CHTRANS';

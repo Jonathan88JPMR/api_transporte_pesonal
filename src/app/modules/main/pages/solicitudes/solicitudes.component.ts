@@ -4,6 +4,7 @@ import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModu
 import { TableModule } from 'primeng/table';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
+import { AutoCompleteModule } from 'primeng/autocomplete';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
@@ -22,7 +23,7 @@ import { ComunicadoModalComponent } from '@/app/shared/comunicado-modal/comunica
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, FormsModule,
-    TableModule, DialogModule, SelectModule, InputNumberModule, ButtonModule, TagModule, TooltipModule,
+    TableModule, DialogModule, SelectModule, AutoCompleteModule, InputNumberModule, ButtonModule, TagModule, TooltipModule,
     //MapaComponent, ComunicadoModalComponent
     ComunicadoModalComponent
   ],
@@ -34,6 +35,7 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
   solicitudes: Solicitud[] = [];
   puntos: Punto[] = [];
   motivos: Motivo[] = [];
+  motivosFiltrados: string[] = [];
   traslados: Traslado[] = [];
   unidades: Unidad[] = [];
   porciones: Record<number, { placa: string; cantidad: number; estado: string }[]> = {};
@@ -272,6 +274,13 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     if (s.esEmergencia) this.form.get('prioridad')?.disable({ emitEvent: false });
     else this.form.get('prioridad')?.enable({ emitEvent: false });
     this.mostrarDialogo = true;
+  }
+
+  filtrarMotivos(event: { query?: string }) {
+    const q = (event.query ?? '').toUpperCase();
+    this.motivosFiltrados = this.motivos
+      .map(m => m.nombre ?? '')
+      .filter(n => n.toUpperCase().includes(q));
   }
 
   // Emergencia médica: aplica EMERGENCIA + 1 persona + motivo Salud +
