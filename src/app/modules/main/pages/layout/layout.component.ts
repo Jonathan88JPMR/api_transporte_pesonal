@@ -46,6 +46,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   claveConfirmar = '';
   private actualizador?: ReturnType<typeof setInterval>;
   private idsNotificados = new Set<number>();
+  private asignacionesAvisadas = new Set<number>();
   private primeraCargaNotificaciones = true;
   private permisoPedido = false;
   private onOnline = () => { this.isOnline = true; };
@@ -101,6 +102,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
       const lista = await this.transporteService.listarNotificaciones(this.usuario.idUsuario);
       this.notificarPush(lista);
       this.notificaciones = lista;
+      this.avisarAsignaciones(lista);
     } catch { }
     await this.revisarComunicadoVigente();
   }
@@ -144,6 +146,15 @@ export class LayoutComponent implements OnInit, OnDestroy {
       this.idsNotificados.add(n.idNotificacion);
     }
     this.primeraCargaNotificaciones = false;
+  }
+
+  private avisarAsignaciones(lista: any[]) {
+    if (this.usuario?.idrol !== 'CHTRANS') return;
+    const nuevas = lista.filter(n => n.tipo === 'ASIGNACION' && !n.leida && !this.asignacionesAvisadas.has(n.idNotificacion));
+    lista.forEach(n => this.asignacionesAvisadas.add(n.idNotificacion));
+    if (!nuevas.length) return;
+    this.alertService.showAlert('info', nuevas.map(n => n.mensaje).join('\n\n'),
+      nuevas.length === 1 ? 'Te han asignado un viaje' : 'Te han asignado nuevos viajes');
   }
 
   async leerNotificacion(notificacion: any) {
