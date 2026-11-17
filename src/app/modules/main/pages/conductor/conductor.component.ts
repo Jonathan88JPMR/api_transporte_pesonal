@@ -1,4 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
@@ -54,6 +56,7 @@ export class ConductorComponent implements OnInit, OnDestroy {
   paradaNuevaCantidad = 1;
   // Ping GPS cada 30 s mientras la unidad tenga servicios EN_RUTA/A_BORDO
   private timerGps?: ReturnType<typeof setInterval>;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private transporteService: TransporteService,
@@ -74,11 +77,18 @@ export class ConductorComponent implements OnInit, OnDestroy {
     await this.cargar();
     this.reportarGps();
     this.timerGps = setInterval(() => this.reportarGps(), 30000);
+    // El layout detecta la asignación del día y refresca la lista sin
+    // que el conductor tenga que tocar "Actualizar".
+    this.transporteService.nuevasAsignaciones$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => void this.cargar());
   }
 
   ngOnDestroy() {
     if (this.timerGps) clearInterval(this.timerGps);
     this.mediaQuery.removeEventListener('change', this.alCambiarMedia);
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   // Ubicación en vivo: se reporta a cada traslado EN_RUTA/A_BORDO de la unidad

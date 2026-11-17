@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@/environments/environment';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subject } from 'rxjs';
 import { AsignacionUnidad, Auditoria, IndicadoresReporte, Motivo, Parada, ParadaDetalle, PosicionGeo, ProgresoTraslado, Punto, Solicitud, Traslado, Unidad } from '@/app/models/transporte.models';
 import { DexieService } from '@/app/shared/dixiedb/dexie-db.service';
 
@@ -10,6 +10,9 @@ import { DexieService } from '@/app/shared/dixiedb/dexie-db.service';
 })
 export class TransporteService {
   private readonly baseUrl: string = `${environment.baseUrl}/api/transporte`;
+  // El layout lo emite cuando llega una asignación nueva del día: el
+  // conductor la usa para refrescar "Mis servicios" sin tocar Actualizar.
+  readonly nuevasAsignaciones$ = new Subject<void>();
 
   constructor(private http: HttpClient, private dexie: DexieService) {
     window.addEventListener('online', () => void this.sincronizarPendientes());
@@ -236,6 +239,25 @@ export class TransporteService {
 
   listarNotificaciones(idUsuario: number): Promise<any[]> {
     return this.post<any[]>('notificaciones/listar', { idUsuario }).then(r => this.unwrap(r));
+  }
+
+  // ============ Web Push (notificaciones del sistema) ============
+
+  vapidPublica(): Promise<{ publicKey?: string } | undefined> {
+    return lastValueFrom(this.http.get<{ publicKey?: string }>(`${this.baseUrl}/push/vapid-publica`));
+  }
+
+  suscribirPush(idUsuario: number, sub: PushSubscriptionJSON): Promise<any> {
+    return this.post('push/suscribir', {
+      idUsuario,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys?.['p256dh'],
+      auth: sub.keys?.['auth']
+    });
+  }
+
+  bajaPush(endpoint: string): Promise<any> {
+    return this.post('push/dar-baja', { endpoint });
   }
 
   marcarNotificacion(idUsuario: number, idNotificacion: number): Promise<any[]> {

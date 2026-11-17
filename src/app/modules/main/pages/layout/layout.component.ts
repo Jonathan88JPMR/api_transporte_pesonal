@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '@/app/modules/auth/services/auth.service';
 import { Usuario } from '@/app/models/transporte.models';
 import { TransporteService } from '../../services/transporte.service';
+import { PushService } from '../../services/push.service';
 import { DexieService } from '@/app/shared/dixiedb/dexie-db.service';
 import { AlertService } from '@/app/shared/alertas/alerts.service';
 import { environment } from '@/environments/environment';
@@ -51,11 +52,21 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private permisoPedido = false;
   private onOnline = () => { this.isOnline = true; };
   private onOffline = () => { this.isOnline = false; };
+  private audioCtx?: AudioContext;
+  // Los navegadores móviles bloquean el audio sin un gesto previo del
+  // usuario: el primer clic (login, menú, etc.) crea/reanuda el contexto.
+  private desbloquearAudio = () => {
+    try {
+      this.audioCtx ??= new AudioContext();
+      if (this.audioCtx.state === 'suspended') void this.audioCtx.resume();
+    } catch { }
+  };
 
   constructor(
     private router: Router,
     private authService: AuthService,
     private transporteService: TransporteService,
+    private pushService: PushService,
     private dexie: DexieService,
     private alertService: AlertService
   ) { }
@@ -63,6 +74,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     this.usuario = await this.authService.getUser();
     const rol = this.usuario?.idrol ?? '';
+    void this.pushService.activar(this.usuario?.idUsuario);
 
     const esSupervisor = rol === 'SPTRANS' || rol === 'ADTRANS';
     const esCoordinador = rol === 'COTRANS' || rol === 'ADTRANS';
@@ -72,6 +84,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.isOnline = navigator.onLine;
     window.addEventListener('online', this.onOnline);
     window.addEventListener('offline', this.onOffline);
+    document.addEventListener('click', this.desbloquearAudio);
 
     await this.actualizarEstado();
     this.actualizador = setInterval(() => void this.actualizarEstado(), 30000);
@@ -102,7 +115,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
       const lista = await this.transporteService.listarNotificaciones(this.usuario.idUsuario);
       this.notificarPush(lista);
       this.notificaciones = lista;
-      this.avisarAsignaciones(lista);
+      void this.avisarAsignaciones(lista);
     } catch { }
     await this.revisarComunicadoVigente();
   }
@@ -140,7 +153,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
     }
     if (Notification.permission !== 'granted') return;
     for (const n of lista) {
-      if (!n.leida && !this.idsNotificados.has(n.idNotificacion) && !this.primeraCargaNotificaciones) {
+      const alertable = n.tipo !== 'ASIGNACION' || this.esDeHoy(n.fechaServicio);
+      if (!n.leida && !this.idsNotificados.has(n.idNotificacion) && !this.primeraCargaNotificaciones && alertable) {
         new Notification(n.titulo, { body: n.mensaje, icon: 'favicon.svg' });
       }
       this.idsNotificados.add(n.idNotificacion);
@@ -148,13 +162,50 @@ export class LayoutComponent implements OnInit, OnDestroy {
     this.primeraCargaNotificaciones = false;
   }
 
-  private avisarAsignaciones(lista: any[]) {
+  // Alerta al conductor solo cuando el servicio asignado es del día:
+  // fechaServicio la graba el SP al asignar (NULL = notificación vieja).
+  private async avisarAsignaciones(lista: any[]) {
     if (this.usuario?.idrol !== 'CHTRANS') return;
-    const nuevas = lista.filter(n => n.tipo === 'ASIGNACION' && !n.leida && !this.asignacionesAvisadas.has(n.idNotificacion));
+    const nuevas = lista.filter(n => n.tipo === 'ASIGNACION' && !n.leida
+      && !this.asignacionesAvisadas.has(n.idNotificacion) && this.esDeHoy(n.fechaServicio));
     lista.forEach(n => this.asignacionesAvisadas.add(n.idNotificacion));
     if (!nuevas.length) return;
-    this.alertService.showAlert('info', nuevas.map(n => n.mensaje).join('\n\n'),
-      nuevas.length === 1 ? 'Te han asignado un viaje' : 'Te han asignado nuevos viajes');
+    this.sonarAsignacion();
+    navigator.vibrate?.([300, 120, 300]);
+    this.transporteService.nuevasAsignaciones$.next();
+    const ir = await this.alertService.confirm(
+      nuevas.length === 1 ? 'Te han asignado un viaje' : 'Te han asignado nuevos viajes',
+      nuevas.map(n => n.mensaje).join('\n\n'));
+    if (ir) void this.router.navigate(['/main/conductor']);
+  }
+
+  private esDeHoy(fecha?: string): boolean {
+    if (!fecha) return false;
+    const hoy = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return fecha.substring(0, 10) === `${hoy.getFullYear()}-${p(hoy.getMonth() + 1)}-${p(hoy.getDate())}`;
+  }
+
+  // Triple beep con WebAudio (sin archivos de audio)
+  private sonarAsignacion() {
+    try {
+      this.desbloquearAudio();
+      const ctx = this.audioCtx;
+      if (!ctx || ctx.state !== 'running') return;
+      const t0 = ctx.currentTime;
+      [0, 0.22, 0.44].forEach((inicio, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = i === 2 ? 1175 : 880;
+        gain.gain.setValueAtTime(0.0001, t0 + inicio);
+        gain.gain.exponentialRampToValueAtTime(0.4, t0 + inicio + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + inicio + 0.18);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0 + inicio);
+        osc.stop(t0 + inicio + 0.2);
+      });
+    } catch { }
   }
 
   async leerNotificacion(notificacion: any) {
@@ -183,6 +234,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     if (this.actualizador) clearInterval(this.actualizador);
     window.removeEventListener('online', this.onOnline);
     window.removeEventListener('offline', this.onOffline);
+    document.removeEventListener('click', this.desbloquearAudio);
   }
 
   toggleSidebar() {
@@ -229,6 +281,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   async logout(): Promise<void> {
+    await this.pushService.desactivar();
     await this.authService.logout();
   }
 }
