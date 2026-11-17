@@ -45,8 +45,9 @@
       <th class="d-none d-md-table-cell">PRIORIDAD</th>
       <th>NOMBRE</th>
       <th *ngIf="!esSupervisor"><span class="d-none d-md-inline">FECHA / </span>HR. SOLICITUD</th>
-      <th>HR. REQUERIDA</th>
-      <th>AREA</th>
+      <!-- <th>HR. REQUERIDA</th> -->
+      <th>HORA</th>
+      <!-- <th>AREA</th> -->
       <th>P. PARTIDA</th>
       <th>P. LLEGADA</th>
       <th class="text-center"><span class="d-md-none">CANT.</span><span class="d-none d-md-inline">CANTIDAD</span></th>
@@ -67,7 +68,7 @@
       <td>{{ s.nombre }}</td>
       <td *ngIf="!esSupervisor"><span class="d-none d-md-inline">{{ s.fechaProgramada | date:'dd/MM/yyyy' }} </span>{{ s.horaProgramada }}</td>
       <td class="col-negrita">{{ s.horaRequerida || s.horaProgramada }}</td>
-      <td>{{ s.area }}</td>
+      <!-- <td>{{ s.area }}</td> -->
       <td class="col-negrita">{{ s.puntoPartida }}</td>
       <td class="col-negrita">{{ s.puntoLlegada }}</td>
       <td class="col-negrita text-center">
@@ -127,7 +128,8 @@
       <input type="time" class="form-control" formControlName="horaProgramada" readonly tabindex="-1" />
     </div> -->
     <div>
-      <label class="form-label">HR. REQUERIDA *</label>
+      <!-- <label class="form-label">HR. REQUERIDA *</label> -->
+       <label class="form-label">HORA *</label>
       <input type="time" class="form-control" formControlName="horaRequerida" />
       <div *ngIf="form.hasError('horaPasada')" class="text-danger small">
         La hora requerida no puede ser anterior a la hora actual
@@ -210,12 +212,13 @@
       <dt>NOMBRE</dt><dd>{{ detalle.nombre }}</dd>
       <dt>FECHA PROGRAMADA</dt><dd>{{ detalle.fechaProgramada | date:'dd/MM/yyyy' }}</dd>
       <dt>HR. SOLICITUD</dt><dd>{{ detalle.horaProgramada }}</dd>
-      <dt>HR. REQUERIDA</dt><dd>{{ detalle.horaRequerida || detalle.horaProgramada }}</dd>
-      <dt>AREA</dt><dd>{{ detalle.area }}</dd>
+      <!-- <dt>HR. REQUERIDA</dt><dd>{{ detalle.horaRequerida || detalle.horaProgramada }}</dd> -->
+      <dt>HORA</dt><dd>{{ detalle.horaRequerida || detalle.horaProgramada }}</dd>
+      <!-- <dt>AREA</dt><dd>{{ detalle.area }}</dd> -->
       <dt>P. PARTIDA</dt><dd>{{ detalle.puntoPartida }}</dd>
       <dt>P. LLEGADA</dt><dd>{{ detalle.puntoLlegada }}</dd>
       <dt>CANTIDAD</dt><dd>{{ detalle.cantidad }}</dd>
-      <dt>MOTIVO</dt><dd>{{ detalle.motivo }}</dd>
+      <!-- <dt>MOTIVO</dt><dd>{{ detalle.motivo }}</dd> -->
       <dt>OBSERVACIÓN</dt><dd>{{ detalle.observacion || '-' }}</dd>
       <dt>PLACA</dt><dd>{{ placaTexto(detalle) }}</dd>
       <dt>ESTADO</dt><dd>{{ detalle.estado }}</dd>
