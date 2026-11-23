@@ -177,6 +177,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
       });
     lista.forEach(n => this.asignacionesAvisadas.add(n.idNotificacion));
     if (!nuevas.length) return;
+    // La alerta ya cumplió su función (sonido + modal): se marcan leídas
+    // en el servidor para que no vuelva a sonar al recargar la app ni en
+    // otro dispositivo. Siguen visibles en la campanita como historial.
+    nuevas.forEach(n => void this.leerNotificacion(n));
     this.sonarAsignacion();
     navigator.vibrate?.([300, 120, 300]);
     this.transporteService.nuevasAsignaciones$.next();

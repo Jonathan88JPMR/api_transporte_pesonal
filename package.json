@@ -1,6 +1,6 @@
 {
   "name": "transporte-personal",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "scripts": {
     "ng": "ng",
     "start": "node scripts/update-version.js && ng serve",
