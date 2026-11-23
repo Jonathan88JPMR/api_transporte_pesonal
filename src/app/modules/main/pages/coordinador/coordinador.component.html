@@ -173,12 +173,25 @@
                   <i class="pi pi-unlink"></i><span class="accion-label">Separar</span>
                 </button>
                 -->
-                <div class="d-flex gap-1 align-items-center" *ngIf="!s.idTraslado && s.estado !== 'PENDIENTE' && s.estado !== 'ANULADO'">
+                <!-- ASIGNADO: cambiar unidad por falla mecánica y/o corregir
+                     datos del servicio sin desasignar -->
+                <div class="d-flex gap-1 align-items-center" *ngIf="s.estado === 'ASIGNADO'">
                   <p-tag [value]="s.estado" [severity]="severidadEstado(s.estado)"></p-tag>
-                  <button *ngIf="s.estado === 'ASIGNADO'" class="btn btn-sm btn-outline-warning" (click)="desasignar(s)"
+                  <button class="btn btn-sm btn-outline-primary" (click)="abrirEdicionAsignada(s)"
+                          pTooltip="Editar servicio o cambiar unidad (falla mecánica)" tooltipPosition="top">
+                    <i class="pi pi-pencil"></i><span class="accion-label">Editar</span>
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" (click)="abrirAsignacionMultiple(s)"
+                          pTooltip="Redistribuir en varias unidades" tooltipPosition="top">
+                    <i class="pi pi-clone"></i><span class="accion-label">Varias</span>
+                  </button>
+                  <button *ngIf="!s.idTraslado" class="btn btn-sm btn-outline-warning" (click)="desasignar(s)"
                           pTooltip="Quitar la(s) unidad(es) asignada(s)" tooltipPosition="top">
                     <i class="pi pi-undo"></i><span class="accion-label">Desasignar</span>
                   </button>
+                </div>
+                <div class="d-flex gap-1 align-items-center" *ngIf="s.estado !== 'PENDIENTE' && s.estado !== 'ASIGNADO' && s.estado !== 'ANULADO'">
+                  <p-tag [value]="s.estado" [severity]="severidadEstado(s.estado)"></p-tag>
                 </div>
               </td>
             </tr>
@@ -483,5 +496,51 @@
   <ng-template #footer>
     <button class="btn btn-outline-secondary" (click)="cerrarEdicion()">Cancelar</button>
     <button class="btn btn-primary" (click)="guardarEdicion()">Guardar cambios</button>
+  </ng-template>
+</p-dialog>
+
+<!-- Edición de servicio ASIGNADO: reasignar unidad por falla mecánica
+     y/o corregir hora requerida, puntos y cantidad del servicio -->
+<p-dialog [(visible)]="mostrarEdicionAsignada" [modal]="true" [style]="{ width: '560px' }"
+          [header]="'Servicio asignado #' + (servicioEditando?.idSolicitud ?? '') + ' — ' + (servicioEditando?.nombre ?? '')"
+          [draggable]="false" (onHide)="cerrarEdicionAsignada()">
+  <div class="d-flex flex-column gap-3">
+    <div class="alert alert-warning py-2 mb-0 small">
+      <i class="pi pi-info-circle me-1"></i>
+      El cambio se aplica de inmediato y se notifica al conductor afectado.
+      <ng-container *ngIf="companerasTraslado(servicioEditando) > 0">
+        <br><b>Traslado compartido:</b> la nueva unidad reemplazará a la actual en las {{ companerasTraslado(servicioEditando) + 1 }} solicitudes del traslado.
+      </ng-container>
+    </div>
+    <div class="row g-2" *ngIf="servicioEditando?.placa !== 'MULTIPLE'">
+      <div class="col-6">
+        <label class="form-label small mb-0">Unidad (cambiar por falla)</label>
+        <p-select [options]="unidadesOpcionesEdicion()" optionLabel="etiqueta" optionValue="placa"
+                  [(ngModel)]="formAsignacion.placa" placeholder="Unidad" appendTo="body" styleClass="w-100"></p-select>
+      </div>
+      <div class="col-6"><label class="form-label small mb-0">Hr. requerida</label><input type="time" class="form-control" [(ngModel)]="formAsignacion.horaRequerida" /></div>
+    </div>
+    <div class="row g-2" *ngIf="servicioEditando?.placa === 'MULTIPLE'">
+      <div class="col-6">
+        <label class="form-label small mb-0">Unidades</label>
+        <div class="form-control bg-light small">MULTIPLE — use "Varias" para cambiar unidades o cantidad</div>
+      </div>
+      <div class="col-6"><label class="form-label small mb-0">Hr. requerida</label><input type="time" class="form-control" [(ngModel)]="formAsignacion.horaRequerida" /></div>
+    </div>
+    <div class="row g-2">
+      <div class="col-6"><label class="form-label small mb-0">P. partida</label><p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="formAsignacion.puntoPartida" appendTo="body" styleClass="w-100"></p-select></div>
+      <div class="col-6"><label class="form-label small mb-0">P. llegada</label><p-select [options]="puntos" optionLabel="nombre" optionValue="nombre" [(ngModel)]="formAsignacion.puntoLlegada" appendTo="body" styleClass="w-100"></p-select></div>
+    </div>
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label small mb-0">Cantidad</label>
+        <input type="number" min="1" class="form-control" [(ngModel)]="formAsignacion.cantidad"
+               [disabled]="servicioEditando?.placa === 'MULTIPLE'" />
+      </div>
+    </div>
+  </div>
+  <ng-template #footer>
+    <button class="btn btn-outline-secondary" (click)="cerrarEdicionAsignada()">Cancelar</button>
+    <button class="btn btn-primary" (click)="guardarEdicionAsignada()">Guardar cambios</button>
   </ng-template>
 </p-dialog>

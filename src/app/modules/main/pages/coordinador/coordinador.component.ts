@@ -165,6 +165,11 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
   solicitudEditando?: Solicitud;
   mostrarEdicion = false;
   formEdicion: any = {};
+  // Edición de servicio ASIGNADO: cambiar unidad (falla mecánica) y/o
+  // corregir hora/puntos/cantidad sin desasignar
+  servicioEditando?: Solicitud;
+  mostrarEdicionAsignada = false;
+  formAsignacion: any = {};
 
   constructor(
     private transporteService: TransporteService,
@@ -552,6 +557,78 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ===== Edición de servicio ASIGNADO (falla mecánica / corrección) =====
+  // Un solo modal: unidad de reemplazo + hora requerida + puntos + cantidad.
+  abrirEdicionAsignada(s: Solicitud) {
+    this.servicioEditando = s;
+    this.formAsignacion = {
+      placa: s.placa !== 'MULTIPLE' ? s.placa : '',
+      horaRequerida: s.horaRequerida ?? s.horaProgramada,
+      puntoPartida: s.puntoPartida,
+      puntoLlegada: s.puntoLlegada,
+      cantidad: s.cantidad
+    };
+    this.mostrarEdicionAsignada = true;
+  }
+
+  cerrarEdicionAsignada() {
+    this.mostrarEdicionAsignada = false;
+    this.servicioEditando = undefined;
+  }
+
+  // Solicitudes que comparten el traslado de la fila (el cambio de unidad
+  // mueve el traslado completo, no solo esta solicitud)
+  companerasTraslado(s?: Solicitud): number {
+    if (!s?.idTraslado) return 0;
+    const t = this.traslados.find(x => x.idTraslado === s.idTraslado);
+    return Math.max(0, (t?.solicitudes?.length ?? this.solicitudes.filter(x => x.idTraslado === s.idTraslado).length) - 1);
+  }
+
+  unidadesOpcionesEdicion() {
+    return this.unidadesOpcionesFecha(this.servicioEditando?.fechaProgramada);
+  }
+
+  async guardarEdicionAsignada() {
+    const s = this.servicioEditando;
+    if (!s) return;
+    const f = this.formAsignacion;
+    if (!f.horaRequerida || !f.puntoPartida || !f.puntoLlegada || !f.cantidad || f.cantidad < 1) {
+      this.alertService.showAlert('warning', 'Complete hora, puntos y una cantidad válida', 'Atención');
+      return;
+    }
+    const esMultiple = s.placa === 'MULTIPLE';
+    const cambiaPlaca = !esMultiple && !!f.placa && f.placa !== s.placa;
+    if (cambiaPlaca) {
+      const libre = this.cupoLibre(f.placa, s.fechaProgramada);
+      if (f.cantidad > libre) {
+        const ok = await this.alertService.confirm('Unidad sin cupo',
+          `${f.placa} tiene ${Math.max(libre, 0)} libres y el servicio es de ${f.cantidad} persona(s). ¿Reasignar de todos modos?`);
+        if (!ok) return;
+      }
+      const companeras = this.companerasTraslado(s);
+      if (companeras > 0) {
+        const ok = await this.alertService.confirm('Traslado compartido',
+          `Esta solicitud comparte el traslado T-${s.idTraslado} con otras ${companeras} solicitud(es). La nueva unidad reemplazará a ${s.placa} en todo el traslado. ¿Continuar?`);
+        if (!ok) return;
+      }
+    }
+    try {
+      await this.transporteService.actualizarAsignacion({
+        idSolicitud: s.idSolicitud,
+        ...(cambiaPlaca ? { placa: f.placa } : {}),
+        horaRequerida: f.horaRequerida,
+        puntoPartida: f.puntoPartida,
+        puntoLlegada: f.puntoLlegada,
+        cantidad: f.cantidad,
+        usuario: this.usuario?.usuario
+      });
+      this.cerrarEdicionAsignada();
+      await this.cargar();
+    } catch (e) {
+      this.alertService.showAlert('error', this.mensajeError(e, 'No se pudo actualizar el servicio'), 'Error');
+    }
+  }
+
   async anularSolicitud(s: Solicitud) {
     const ok = await this.alertService.confirm('Anular solicitud', `¿Anular la solicitud de ${s.nombre}?`);
     if (!ok) return;
@@ -902,7 +979,12 @@ export class CoordinadorComponent implements OnInit, OnDestroy {
 
   abrirAsignacionMultiple(s: Solicitud) {
     this.solicitudMultiple = s;
-    this.asignaciones = [{ placa: '', cantidad: s.cantidad }];
+    // Sobre un servicio ya repartido se precargan las porciones actuales
+    // para cambiar solo la unidad averiada sin rearmar la distribución
+    const actuales = s.placa === 'MULTIPLE' ? this.unidadesDe(s) : [];
+    this.asignaciones = actuales.length
+      ? actuales.map(u => ({ placa: u.placa, cantidad: u.cantidad }))
+      : [{ placa: '', cantidad: s.cantidad }];
     this.mostrarMultiple = true;
   }
 

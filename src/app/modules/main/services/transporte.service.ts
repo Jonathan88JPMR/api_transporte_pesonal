@@ -51,6 +51,15 @@ export class TransporteService {
     return this.mutar<Solicitud[]>('solicitudes/desasignar', { idSolicitud }).then(r => this.unwrap(r));
   }
 
+  // Reasignar unidad por falla mecánica y/o editar datos del servicio
+  // ASIGNADO (hora requerida, puntos, cantidad). El SP valida el estado.
+  actualizarAsignacion(datos: {
+    idSolicitud: number; placa?: string; horaRequerida?: string;
+    puntoPartida?: string; puntoLlegada?: string; cantidad?: number; usuario?: string;
+  }): Promise<Solicitud[]> {
+    return this.mutar<Solicitud[]>('solicitudes/actualizar-asignacion', datos).then(r => this.unwrap(r));
+  }
+
   unirSolicitudes(ids: number[], placa: string): Promise<Traslado[]> {
     return this.mutar<Traslado[]>('traslados/unir', { ids, placa }).then(r => this.unwrap(r));
   }
