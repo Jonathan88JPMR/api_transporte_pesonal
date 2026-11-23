@@ -166,8 +166,15 @@ export class LayoutComponent implements OnInit, OnDestroy {
   // fechaServicio la graba el SP al asignar (NULL = notificación vieja).
   private async avisarAsignaciones(lista: any[]) {
     if (this.usuario?.idrol !== 'CHTRANS') return;
+    const vistos = new Set<string>();
     const nuevas = lista.filter(n => n.tipo === 'ASIGNACION' && !n.leida
-      && !this.asignacionesAvisadas.has(n.idNotificacion) && this.esDeHoy(n.fechaServicio));
+      && !this.asignacionesAvisadas.has(n.idNotificacion) && this.esDeHoy(n.fechaServicio))
+      // La lista viene por fecha desc: ante una reasignación pueden quedar
+      // varias filas del mismo servicio — mostrar solo la más reciente
+      .filter(n => {
+        const clave = /(?:#|T-)(\d+)/.exec(n.mensaje ?? '')?.[0] ?? String(n.idNotificacion);
+        return vistos.has(clave) ? false : (vistos.add(clave), true);
+      });
     lista.forEach(n => this.asignacionesAvisadas.add(n.idNotificacion));
     if (!nuevas.length) return;
     this.sonarAsignacion();
